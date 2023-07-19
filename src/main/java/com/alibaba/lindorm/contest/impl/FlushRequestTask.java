@@ -101,6 +101,7 @@ public class FlushRequestTask extends Thread {
             }
             //保存索引信息
             for (IndexBlock indexBlock : indexBlockList) {
+                indexWriteByteBuffer.putShort(indexBlock.getIndexBlockLength());
                 indexWriteByteBuffer.putInt(indexBlock.getPosition());
                 indexWriteByteBuffer.putShort(indexBlock.getTableNameLength());
                 indexWriteByteBuffer.put(indexBlock.getTableName());

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -27,23 +28,41 @@ public class IndexBufferHandler {
     }
 
     public static void initIndexBuffer(File ipFile) throws IOException {
-        ByteBuffer byteBuffer = ByteBuffer.allocateDirect(1024);
+        ByteBuffer sizeByteBuffer = ByteBuffer.allocateDirect(2);
         FileChannel fileChannel = FileChannel.open(ipFile.toPath(), READ);
         if (fileChannel.size() == 0) {
             return;
         }
-        int read = fileChannel.read(byteBuffer);
-        while (read != -1) {
-            byteBuffer.flip();
-            int dataPosition = byteBuffer.getInt();
-            short tableNameLength = byteBuffer.getShort();
+        int sizeByteBufferRead = fileChannel.read(sizeByteBuffer);
+        while (sizeByteBufferRead != -1) {
+            IndexBlock indexBlock = new IndexBlock();
+
+            sizeByteBuffer.flip();
+            short indexBlockLength = sizeByteBuffer.getShort();
+            ByteBuffer dataByteBuffer = ByteBuffer.allocateDirect(indexBlockLength);
+            fileChannel.read(dataByteBuffer);
+            dataByteBuffer.flip();
+            int position = dataByteBuffer.getInt();
+            indexBlock.setPosition(position);
+            short tableNameLength = dataByteBuffer.getShort();
+            indexBlock.setTableNameLength(tableNameLength);
             byte[] tableName = new byte[tableNameLength];
             for (short i = 0; i < tableNameLength; i++) {
-                tableName[i] = byteBuffer.get();
+                tableName[i] = dataByteBuffer.get();
             }
-            int i = 0;
-            byteBuffer.clear();
-            read = fileChannel.read(byteBuffer);
+            indexBlock.setTableName(tableName);
+            short rowKeyLength = dataByteBuffer.getShort();
+            indexBlock.setRowKeyLength(rowKeyLength);
+            byte[] rowKey = new byte[rowKeyLength];
+            for (short i = 0; i < rowKeyLength; i++) {
+                rowKey[i] = dataByteBuffer.get();
+            }
+            indexBlock.setRowKey(rowKey);
+            offerIndex(new String(tableName), Collections.singletonList(indexBlock));
+
+            sizeByteBuffer.clear();
+            sizeByteBufferRead = fileChannel.read(sizeByteBuffer);
         }
+        int i = 0;
     }
 }
