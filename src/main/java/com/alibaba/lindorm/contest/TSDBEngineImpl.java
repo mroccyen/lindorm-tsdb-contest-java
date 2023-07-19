@@ -7,6 +7,8 @@
 
 package com.alibaba.lindorm.contest;
 
+import com.alibaba.lindorm.contest.impl.CommonSetting;
+import com.alibaba.lindorm.contest.impl.IndexBufferHandler;
 import com.alibaba.lindorm.contest.impl.WriteRequestWrapper;
 import com.alibaba.lindorm.contest.impl.HandleRequestTask;
 import com.alibaba.lindorm.contest.structs.LatestQueryRequest;
@@ -26,7 +28,7 @@ public class TSDBEngineImpl extends TSDBEngine {
 
     private HandleRequestTask writeTask;
 
-    private HashMap<String, Schema> tableSchema = new HashMap<>();
+    private final HashMap<String, Schema> tableSchema = new HashMap<>();
 
     /**
      * This constructor's function signature should not be modified.
@@ -39,9 +41,22 @@ public class TSDBEngineImpl extends TSDBEngine {
 
     @Override
     public void connect() throws IOException {
-        writeTask = new HandleRequestTask(getDataPath());
+        String absolutePath = dataPath.getAbsolutePath();
+        String dp = absolutePath + File.separator + CommonSetting.DATA_NAME;
+        File dpFile = new File(dp);
+        if (!dpFile.exists()) {
+            dpFile.createNewFile();
+        }
+        String ip = absolutePath + File.separator + CommonSetting.INDEX_NAME;
+        File ipFile = new File(ip);
+        if (!ipFile.exists()) {
+            ipFile.createNewFile();
+        }
+        writeTask = new HandleRequestTask(dpFile, ipFile);
         //开启写入任务
         writeTask.start();
+        //加载索引信息
+        IndexBufferHandler.initIndexBuffer(ipFile);
     }
 
     @Override
@@ -52,7 +67,7 @@ public class TSDBEngineImpl extends TSDBEngine {
 
     @Override
     public void shutdown() {
-
+        IndexBufferHandler.shutdown();
     }
 
     @Override

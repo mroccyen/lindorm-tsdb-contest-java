@@ -7,10 +7,6 @@ public class IndexBlock {
     private short rowKeyLength;
     private byte[] rowKey;
 
-    public int getIndexBlockSize() {
-        return 4 + 2 + tableName.length + 2 + rowKey.length;
-    }
-
     public int getPosition() {
         return position;
     }

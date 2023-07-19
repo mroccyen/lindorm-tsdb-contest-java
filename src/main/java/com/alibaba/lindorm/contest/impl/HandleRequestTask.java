@@ -13,8 +13,8 @@ public class HandleRequestTask extends Thread {
 
     private final FlushRequestTask flushRequestTask;
 
-    public HandleRequestTask(File dataPath) throws IOException {
-        flushRequestTask = new FlushRequestTask(dataPath);
+    public HandleRequestTask(File dpFile, File ipFile) throws IOException {
+        flushRequestTask = new FlushRequestTask(dpFile, ipFile);
         flushRequestTask.start();
     }
 

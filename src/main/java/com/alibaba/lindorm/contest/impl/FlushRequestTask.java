@@ -19,18 +19,22 @@ import static java.nio.file.StandardOpenOption.WRITE;
 public class FlushRequestTask extends Thread {
     private final BlockingQueue<List<WriteRequestWrapper>> flushRequestQueue = new ArrayBlockingQueue<>(100);
 
-    private final FileChannel writeFileChanel;
+    private final FileChannel dataWriteFileChanel;
 
-    private final ByteBuffer writeByteBuffer;
+    private final ByteBuffer dataWriteByteBuffer;
 
-    public FlushRequestTask(File dataPath) throws IOException {
-        String absolutePath = dataPath.getAbsolutePath();
-        String s = absolutePath + File.separator + "t.data";
-        File f = new File(s);
-        f.createNewFile();
-        writeFileChanel = FileChannel.open(f.toPath(), WRITE);
-        writeByteBuffer = ByteBuffer.allocateDirect(1024 * 1024);
-        writeByteBuffer.position(0);
+    private final FileChannel indexWriteFileChanel;
+
+    private final ByteBuffer indexWriteByteBuffer;
+
+    public FlushRequestTask(File dpFile, File ipFile) throws IOException {
+        dataWriteFileChanel = FileChannel.open(dpFile.toPath(), WRITE);
+        dataWriteByteBuffer = ByteBuffer.allocateDirect(1024 * 1024);
+        dataWriteByteBuffer.position(0);
+
+        indexWriteFileChanel = FileChannel.open(ipFile.toPath(), WRITE);
+        indexWriteByteBuffer = ByteBuffer.allocateDirect(1024 * 1024);
+        indexWriteByteBuffer.position(0);
     }
 
     public BlockingQueue<List<WriteRequestWrapper>> getFlushRequestQueue() {
@@ -54,9 +58,10 @@ public class FlushRequestTask extends Thread {
     }
 
     private void doWrite(List<WriteRequestWrapper> writeRequestWrapperList) throws IOException {
-        List<IndexBlock> indexBlockList = new ArrayList<>();
         //保存KV数据
         for (WriteRequestWrapper writeRequestWrapper : writeRequestWrapperList) {
+            List<IndexBlock> indexBlockList = new ArrayList<>();
+
             WriteRequest writeRequest = writeRequestWrapper.getWriteRequest();
             String tableName = writeRequest.getTableName();
             Schema schema = writeRequestWrapper.getSchema();
@@ -65,24 +70,24 @@ public class FlushRequestTask extends Thread {
                 Map<String, ColumnValue> columns = row.getColumns();
                 Vin vin = row.getVin();
                 for (Map.Entry<String, ColumnValue> entity : columns.entrySet()) {
-                    int position = writeByteBuffer.position();
+                    int position = dataWriteByteBuffer.position();
                     KeyValue keyValue = resolveKey(entity.getKey(), entity.getValue(), row.getTimestamp(), vin, schema);
-                    writeByteBuffer.putShort(keyValue.getKeyLength());
-                    writeByteBuffer.putShort(keyValue.getRowKeyLength());
-                    writeByteBuffer.put(keyValue.getRowKey());
-                    writeByteBuffer.putShort(keyValue.getColumnNameLength());
-                    writeByteBuffer.put(keyValue.getColumnName());
-                    writeByteBuffer.putLong(keyValue.getTimestamp());
-                    writeByteBuffer.put(keyValue.getValueType());
-                    writeByteBuffer.putShort(keyValue.getValueLength());
+                    dataWriteByteBuffer.putShort(keyValue.getKeyLength());
+                    dataWriteByteBuffer.putShort(keyValue.getRowKeyLength());
+                    dataWriteByteBuffer.put(keyValue.getRowKey());
+                    dataWriteByteBuffer.putShort(keyValue.getColumnNameLength());
+                    dataWriteByteBuffer.put(keyValue.getColumnName());
+                    dataWriteByteBuffer.putLong(keyValue.getTimestamp());
+                    dataWriteByteBuffer.put(keyValue.getValueType());
+                    dataWriteByteBuffer.putShort(keyValue.getValueLength());
                     if (keyValue.getColumnType().equals(ColumnValue.ColumnType.COLUMN_TYPE_STRING)) {
-                        writeByteBuffer.put(keyValue.getByteBufferValue());
+                        dataWriteByteBuffer.put(keyValue.getByteBufferValue());
                     }
                     if (keyValue.getColumnType().equals(ColumnValue.ColumnType.COLUMN_TYPE_INTEGER)) {
-                        writeByteBuffer.putInt(keyValue.getIntegerValue());
+                        dataWriteByteBuffer.putInt(keyValue.getIntegerValue());
                     }
                     if (keyValue.getColumnType().equals(ColumnValue.ColumnType.COLUMN_TYPE_DOUBLE_FLOAT)) {
-                        writeByteBuffer.putDouble(keyValue.getDoubleValue());
+                        dataWriteByteBuffer.putDouble(keyValue.getDoubleValue());
                     }
                     IndexBlock indexBlock = new IndexBlock();
                     indexBlock.setPosition(position);
@@ -94,24 +99,22 @@ public class FlushRequestTask extends Thread {
                     indexBlockList.add(indexBlock);
                 }
             }
+            //保存索引信息
+            for (IndexBlock indexBlock : indexBlockList) {
+                indexWriteByteBuffer.putInt(indexBlock.getPosition());
+                indexWriteByteBuffer.putShort(indexBlock.getTableNameLength());
+                indexWriteByteBuffer.put(indexBlock.getTableName());
+                indexWriteByteBuffer.putShort(indexBlock.getRowKeyLength());
+                indexWriteByteBuffer.put(indexBlock.getRowKey());
+            }
+            IndexBufferHandler.offerIndex(tableName, indexBlockList);
         }
-        int position = writeByteBuffer.position();
-        int size = 0;
-        //保存索引信息
-        for (IndexBlock indexBlock : indexBlockList) {
-            writeByteBuffer.putInt(indexBlock.getPosition());
-            writeByteBuffer.putShort(indexBlock.getTableNameLength());
-            writeByteBuffer.put(indexBlock.getTableName());
-            writeByteBuffer.putShort(indexBlock.getRowKeyLength());
-            writeByteBuffer.put(indexBlock.getRowKey());
-            size += indexBlock.getIndexBlockSize();
-        }
-        //保存块元数据信息
-        writeByteBuffer.putInt(position);
-        writeByteBuffer.putInt(size);
-
-        writeFileChanel.write(writeByteBuffer);
-        writeFileChanel.force(false);
+        dataWriteByteBuffer.flip();
+        dataWriteFileChanel.write(dataWriteByteBuffer);
+        dataWriteFileChanel.force(false);
+        indexWriteByteBuffer.flip();
+        indexWriteFileChanel.write(indexWriteByteBuffer);
+        indexWriteFileChanel.force(false);
 
         for (WriteRequestWrapper writeRequestWrapper : writeRequestWrapperList) {
             writeRequestWrapper.getLock().lock();
