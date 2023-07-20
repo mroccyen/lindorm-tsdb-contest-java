@@ -7,10 +7,7 @@
 
 package com.alibaba.lindorm.contest;
 
-import com.alibaba.lindorm.contest.impl.CommonSetting;
-import com.alibaba.lindorm.contest.impl.IndexBufferHandler;
-import com.alibaba.lindorm.contest.impl.WriteRequestWrapper;
-import com.alibaba.lindorm.contest.impl.HandleRequestTask;
+import com.alibaba.lindorm.contest.impl.*;
 import com.alibaba.lindorm.contest.structs.LatestQueryRequest;
 import com.alibaba.lindorm.contest.structs.Row;
 import com.alibaba.lindorm.contest.structs.Schema;
@@ -29,6 +26,8 @@ public class TSDBEngineImpl extends TSDBEngine {
     private HandleRequestTask writeTask;
 
     private final HashMap<String, Schema> tableSchema = new HashMap<>();
+
+    private QueryHandler queryHandler;
 
     /**
      * This constructor's function signature should not be modified.
@@ -57,6 +56,8 @@ public class TSDBEngineImpl extends TSDBEngine {
         writeTask.start();
         //加载索引信息
         IndexBufferHandler.initIndexBuffer(ipFile);
+        //初始化数据查询处理器
+        queryHandler = new QueryHandler(dpFile);
     }
 
     @Override
@@ -89,12 +90,12 @@ public class TSDBEngineImpl extends TSDBEngine {
 
     @Override
     public ArrayList<Row> executeLatestQuery(LatestQueryRequest pReadReq) throws IOException {
-        return null;
+        return queryHandler.executeLatestQuery(pReadReq);
     }
 
     @Override
     public ArrayList<Row> executeTimeRangeQuery(TimeRangeQueryRequest trReadReq) throws IOException {
-        return null;
+        return queryHandler.executeTimeRangeQuery(trReadReq);
     }
 
     private Schema selectSchema(String tableName) {

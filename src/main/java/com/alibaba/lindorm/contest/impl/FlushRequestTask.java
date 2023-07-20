@@ -14,6 +14,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+import static java.nio.file.StandardOpenOption.APPEND;
 import static java.nio.file.StandardOpenOption.WRITE;
 
 public class FlushRequestTask extends Thread {
@@ -30,11 +31,9 @@ public class FlushRequestTask extends Thread {
     public FlushRequestTask(File dpFile, File ipFile) throws IOException {
         dataWriteFileChanel = FileChannel.open(dpFile.toPath(), WRITE);
         dataWriteByteBuffer = ByteBuffer.allocateDirect(1024 * 1024);
-        dataWriteByteBuffer.position(0);
 
         indexWriteFileChanel = FileChannel.open(ipFile.toPath(), WRITE);
         indexWriteByteBuffer = ByteBuffer.allocateDirect(1024 * 1024);
-        indexWriteByteBuffer.position(0);
     }
 
     public BlockingQueue<List<WriteRequestWrapper>> getFlushRequestQueue() {
@@ -69,8 +68,8 @@ public class FlushRequestTask extends Thread {
             for (Row row : rows) {
                 Map<String, ColumnValue> columns = row.getColumns();
                 Vin vin = row.getVin();
+                int position = dataWriteByteBuffer.position();
                 for (Map.Entry<String, ColumnValue> entity : columns.entrySet()) {
-                    int position = dataWriteByteBuffer.position();
                     KeyValue keyValue = resolveKey(entity.getKey(), entity.getValue(), row.getTimestamp(), vin, schema);
                     dataWriteByteBuffer.putShort(keyValue.getKeyLength());
                     dataWriteByteBuffer.putShort(keyValue.getRowKeyLength());
@@ -89,20 +88,23 @@ public class FlushRequestTask extends Thread {
                     if (keyValue.getColumnType().equals(ColumnValue.ColumnType.COLUMN_TYPE_DOUBLE_FLOAT)) {
                         dataWriteByteBuffer.putDouble(keyValue.getDoubleValue());
                     }
-                    IndexBlock indexBlock = new IndexBlock();
-                    indexBlock.setPosition(position);
-                    byte[] tableNameBytes = tableName.getBytes();
-                    indexBlock.setTableNameLength((short) tableNameBytes.length);
-                    indexBlock.setTableName(tableNameBytes);
-                    indexBlock.setRowKeyLength(keyValue.getRowKeyLength());
-                    indexBlock.setRowKey(keyValue.getRowKey());
-                    indexBlockList.add(indexBlock);
                 }
+                int p1 = dataWriteByteBuffer.position();
+                IndexBlock indexBlock = new IndexBlock();
+                indexBlock.setOffset(position);
+                indexBlock.setDataSize((short) (p1 - position));
+                byte[] tableNameBytes = tableName.getBytes();
+                indexBlock.setTableNameLength((short) tableNameBytes.length);
+                indexBlock.setTableName(tableNameBytes);
+                indexBlock.setRowKeyLength((short) Vin.VIN_LENGTH);
+                indexBlock.setRowKey(vin.getVin());
+                indexBlockList.add(indexBlock);
             }
             //保存索引信息
             for (IndexBlock indexBlock : indexBlockList) {
                 indexWriteByteBuffer.putShort(indexBlock.getIndexBlockLength());
-                indexWriteByteBuffer.putInt(indexBlock.getPosition());
+                indexWriteByteBuffer.putInt(indexBlock.getOffset());
+                indexWriteByteBuffer.putShort(indexBlock.getDataSize());
                 indexWriteByteBuffer.putShort(indexBlock.getTableNameLength());
                 indexWriteByteBuffer.put(indexBlock.getTableName());
                 indexWriteByteBuffer.putShort(indexBlock.getRowKeyLength());

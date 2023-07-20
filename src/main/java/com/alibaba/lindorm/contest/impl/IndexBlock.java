@@ -1,22 +1,31 @@
 package com.alibaba.lindorm.contest.impl;
 
 public class IndexBlock {
-    private int position;
+    private int offset;
+    private short dataSize;
     private short tableNameLength;
     private byte[] tableName;
     private short rowKeyLength;
     private byte[] rowKey;
 
     public short getIndexBlockLength() {
-        return (short) (4 + 2 + tableName.length + 2 + rowKey.length);
+        return (short) (4 + 2 + 2 + tableName.length + 2 + rowKey.length);
     }
 
-    public int getPosition() {
-        return position;
+    public int getOffset() {
+        return offset;
     }
 
-    public void setPosition(int position) {
-        this.position = position;
+    public void setOffset(int offset) {
+        this.offset = offset;
+    }
+
+    public short getDataSize() {
+        return dataSize;
+    }
+
+    public void setDataSize(short dataSize) {
+        this.dataSize = dataSize;
     }
 
     public short getTableNameLength() {

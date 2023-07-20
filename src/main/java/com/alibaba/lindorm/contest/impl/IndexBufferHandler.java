@@ -23,6 +23,14 @@ public class IndexBufferHandler {
         }
     }
 
+    public static List<IndexBlock> getIndexBlocks(String tableName) {
+        List<IndexBlock> indexBlockList = INDEX_MAP.get(tableName);
+        if (indexBlockList == null) {
+            return new ArrayList<>();
+        }
+        return indexBlockList;
+    }
+
     public static synchronized void shutdown() {
         INDEX_MAP.clear();
     }
@@ -42,8 +50,10 @@ public class IndexBufferHandler {
             ByteBuffer dataByteBuffer = ByteBuffer.allocateDirect(indexBlockLength);
             fileChannel.read(dataByteBuffer);
             dataByteBuffer.flip();
-            int position = dataByteBuffer.getInt();
-            indexBlock.setPosition(position);
+            int offset = dataByteBuffer.getInt();
+            indexBlock.setOffset(offset);
+            short dataSize = dataByteBuffer.getShort();
+            indexBlock.setDataSize(dataSize);
             short tableNameLength = dataByteBuffer.getShort();
             indexBlock.setTableNameLength(tableNameLength);
             byte[] tableName = new byte[tableNameLength];
@@ -60,9 +70,11 @@ public class IndexBufferHandler {
             indexBlock.setRowKey(rowKey);
             offerIndex(new String(tableName), Collections.singletonList(indexBlock));
 
+            dataByteBuffer = null;
             sizeByteBuffer.clear();
             sizeByteBufferRead = fileChannel.read(sizeByteBuffer);
         }
-        int i = 0;
+        sizeByteBuffer = null;
+        fileChannel.close();
     }
 }
