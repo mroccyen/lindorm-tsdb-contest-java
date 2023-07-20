@@ -6,10 +6,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -58,11 +55,10 @@ public class FlushRequestTask extends Thread {
     }
 
     private void doWrite(List<WriteRequestWrapper> writeRequestWrapperList) throws IOException {
-        System.out.println("dataWriteFileChanel position before: " + dataWriteFileChanel.position());
-        System.out.println("indexWriteFileChanel position before: " + indexWriteFileChanel.position());
-
         //保存KV数据
-        for (WriteRequestWrapper writeRequestWrapper : writeRequestWrapperList) {
+        Iterator<WriteRequestWrapper> iterator = writeRequestWrapperList.iterator();
+        while (iterator.hasNext()) {
+            WriteRequestWrapper writeRequestWrapper = iterator.next();
             List<IndexBlock> indexBlockList = new ArrayList<>();
 
             WriteRequest writeRequest = writeRequestWrapper.getWriteRequest();
@@ -123,10 +119,8 @@ public class FlushRequestTask extends Thread {
         indexWriteFileChanel.write(indexWriteByteBuffer);
         indexWriteFileChanel.force(false);
 
-        System.out.println("dataWriteFileChanel position after: " + dataWriteFileChanel.position());
-        System.out.println("indexWriteFileChanel position after: " + indexWriteFileChanel.position());
-
-        for (WriteRequestWrapper writeRequestWrapper : writeRequestWrapperList) {
+        while (iterator.hasNext()) {
+            WriteRequestWrapper writeRequestWrapper = iterator.next();
             writeRequestWrapper.getLock().lock();
             writeRequestWrapper.getCondition().signal();
             writeRequestWrapper.getLock().unlock();
