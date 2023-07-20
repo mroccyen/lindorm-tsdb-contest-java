@@ -14,7 +14,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-import static java.nio.file.StandardOpenOption.WRITE;
+import static java.nio.file.StandardOpenOption.APPEND;
 
 public class FlushRequestTask extends Thread {
     private final BlockingQueue<List<WriteRequestWrapper>> flushRequestQueue = new ArrayBlockingQueue<>(100);
@@ -28,11 +28,11 @@ public class FlushRequestTask extends Thread {
     private final ByteBuffer indexWriteByteBuffer;
 
     public FlushRequestTask(File dpFile, File ipFile) throws IOException {
-        dataWriteFileChanel = FileChannel.open(dpFile.toPath(), WRITE);
+        dataWriteFileChanel = FileChannel.open(dpFile.toPath(), APPEND);
         //100M
         dataWriteByteBuffer = ByteBuffer.allocateDirect(1024 * 1024 * 100);
 
-        indexWriteFileChanel = FileChannel.open(ipFile.toPath(), WRITE);
+        indexWriteFileChanel = FileChannel.open(ipFile.toPath(), APPEND);
         //100M
         indexWriteByteBuffer = ByteBuffer.allocateDirect(1024 * 1024 * 100);
     }
@@ -58,6 +58,9 @@ public class FlushRequestTask extends Thread {
     }
 
     private void doWrite(List<WriteRequestWrapper> writeRequestWrapperList) throws IOException {
+        System.out.println("dataWriteFileChanel position before: " + dataWriteFileChanel.position());
+        System.out.println("indexWriteFileChanel position before: " + indexWriteFileChanel.position());
+
         //保存KV数据
         for (WriteRequestWrapper writeRequestWrapper : writeRequestWrapperList) {
             List<IndexBlock> indexBlockList = new ArrayList<>();
@@ -92,7 +95,7 @@ public class FlushRequestTask extends Thread {
                 }
                 int p1 = dataWriteByteBuffer.position();
                 IndexBlock indexBlock = new IndexBlock();
-                indexBlock.setOffset(position);
+                indexBlock.setOffset((short) (position + dataWriteFileChanel.position()));
                 indexBlock.setDataSize((short) (p1 - position));
                 byte[] tableNameBytes = tableName.getBytes();
                 indexBlock.setTableNameLength((short) tableNameBytes.length);
@@ -119,6 +122,9 @@ public class FlushRequestTask extends Thread {
         indexWriteByteBuffer.flip();
         indexWriteFileChanel.write(indexWriteByteBuffer);
         indexWriteFileChanel.force(false);
+
+        System.out.println("dataWriteFileChanel position after: " + dataWriteFileChanel.position());
+        System.out.println("indexWriteFileChanel position after: " + indexWriteFileChanel.position());
 
         for (WriteRequestWrapper writeRequestWrapper : writeRequestWrapperList) {
             writeRequestWrapper.getLock().lock();

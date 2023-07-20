@@ -70,14 +70,9 @@ public class MyEvaluationSample {
             columns.put("col1", new ColumnValue.IntegerColumn(123));
             columns.put("col2", new ColumnValue.DoubleFloatColumn(1.23));
             columns.put("col3", new ColumnValue.StringColumn(buffer));
-            String str1 = "12345678912345678";
+            String str = "12345678912345678";
             ArrayList<Row> rowList = new ArrayList<>();
-            rowList.add(new Row(new Vin(str1.getBytes(StandardCharsets.UTF_8)), 1, columns));
-            rowList.add(new Row(new Vin(str1.getBytes(StandardCharsets.UTF_8)), 4, columns));
-            String str2 = "98765432123456789";
-            rowList.add(new Row(new Vin(str2.getBytes(StandardCharsets.UTF_8)), 1, columns));
-            rowList.add(new Row(new Vin(str2.getBytes(StandardCharsets.UTF_8)), 2, columns));
-            rowList.add(new Row(new Vin(str2.getBytes(StandardCharsets.UTF_8)), 3, columns));
+            rowList.add(new Row(new Vin(str.getBytes(StandardCharsets.UTF_8)), 1, columns));
 
             tsdbEngineSample.createTable("test", null);
             tsdbEngineSample.upsert(new WriteRequest("test", rowList));
@@ -88,41 +83,37 @@ public class MyEvaluationSample {
             tsdbEngineSample.connect();
 
             ArrayList<Vin> vinList = new ArrayList<>();
-            vinList.add(new Vin(str1.getBytes(StandardCharsets.UTF_8)));
-            Set<String> requestedColumns = new HashSet<>(Arrays.asList("col1", "col3"));
+            vinList.add(new Vin(str.getBytes(StandardCharsets.UTF_8)));
+            Set<String> requestedColumns = new HashSet<>(Arrays.asList("col1", "col2", "col3"));
             ArrayList<Row> resultSet = tsdbEngineSample.executeLatestQuery(new LatestQueryRequest("test", vinList, requestedColumns));
-            showResult(resultSet);
-            resultSet = tsdbEngineSample.executeTimeRangeQuery(new TimeRangeQueryRequest("test", new Vin(str2.getBytes(StandardCharsets.UTF_8)), requestedColumns, 1, 3));
             showResult(resultSet);
 
             tsdbEngineSample.shutdown();
 
             // Stage3: overwrite
-//            tsdbEngineSample.connect();
-//
-//            buffer.flip();
-//            columns = new HashMap<>();
-//            columns.put("col1", new ColumnValue.IntegerColumn(321));
-//            columns.put("col2", new ColumnValue.DoubleFloatColumn(1.23));
-//            columns.put("col3", new ColumnValue.StringColumn(buffer));
-//            str = "12345678912345678";
-//            rowList = new ArrayList<>();
-//            rowList.add(new Row(new Vin(str.getBytes(StandardCharsets.UTF_8)), 1, columns));
-//            str = "98765432123456789";
-//            rowList.add(new Row(new Vin(str.getBytes(StandardCharsets.UTF_8)), 1, columns));
-//            rowList.add(new Row(new Vin(str.getBytes(StandardCharsets.UTF_8)), 2, columns));
-//            rowList.add(new Row(new Vin(str.getBytes(StandardCharsets.UTF_8)), 3, columns));
-//            vinList.add(new Vin(str.getBytes(StandardCharsets.UTF_8)));
-//
-//            tsdbEngineSample.upsert(new WriteRequest("test", rowList));
-//            resultSet = tsdbEngineSample.executeLatestQuery(new LatestQueryRequest("test", vinList, requestedColumns));
-//            showResult(resultSet);
-//            resultSet = tsdbEngineSample.executeTimeRangeQuery(new TimeRangeQueryRequest("test", new Vin(str.getBytes(StandardCharsets.UTF_8)), requestedColumns, 1, 3));
-//            showResult(resultSet);
-//
-//
-//            tsdbEngineSample.shutdown();
+            tsdbEngineSample.connect();
 
+            buffer.flip();
+            columns = new HashMap<>();
+            columns.put("col1", new ColumnValue.IntegerColumn(321));
+            columns.put("col2", new ColumnValue.DoubleFloatColumn(1.23));
+            columns.put("col3", new ColumnValue.StringColumn(buffer));
+            str = "12345678912345678";
+            rowList = new ArrayList<>();
+            rowList.add(new Row(new Vin(str.getBytes(StandardCharsets.UTF_8)), 1, columns));
+            str = "98765432123456789";
+            rowList.add(new Row(new Vin(str.getBytes(StandardCharsets.UTF_8)), 1, columns));
+            rowList.add(new Row(new Vin(str.getBytes(StandardCharsets.UTF_8)), 2, columns));
+            rowList.add(new Row(new Vin(str.getBytes(StandardCharsets.UTF_8)), 3, columns));
+            vinList.add(new Vin(str.getBytes(StandardCharsets.UTF_8)));
+
+            tsdbEngineSample.upsert(new WriteRequest("test", rowList));
+            resultSet = tsdbEngineSample.executeLatestQuery(new LatestQueryRequest("test", vinList, requestedColumns));
+            showResult(resultSet);
+            resultSet = tsdbEngineSample.executeTimeRangeQuery(new TimeRangeQueryRequest("test", new Vin(str.getBytes(StandardCharsets.UTF_8)), requestedColumns, 1, 3));
+            showResult(resultSet);
+
+            tsdbEngineSample.shutdown();
         } catch (IOException e) {
             System.out.println(e.getMessage());
         }
