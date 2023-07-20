@@ -119,6 +119,7 @@ public class FlushRequestTask extends Thread {
         indexWriteFileChanel.write(indexWriteByteBuffer);
         indexWriteFileChanel.force(false);
 
+        iterator = writeRequestWrapperList.iterator();
         while (iterator.hasNext()) {
             WriteRequestWrapper writeRequestWrapper = iterator.next();
             writeRequestWrapper.getLock().lock();
