@@ -49,7 +49,7 @@ public class FlushRequestTask extends Thread {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println(e.getMessage());
             System.exit(-1);
         }
     }

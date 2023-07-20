@@ -82,7 +82,7 @@ public class TSDBEngineImpl extends TSDBEngine {
             //等待force落盘后进行通知
             writeRequestWrapper.getCondition().await();
         } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println(e.getMessage());
             System.exit(-1);
         }
         writeRequestWrapper.getLock().unlock();
