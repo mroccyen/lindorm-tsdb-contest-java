@@ -29,10 +29,12 @@ public class FlushRequestTask extends Thread {
 
     public FlushRequestTask(File dpFile, File ipFile) throws IOException {
         dataWriteFileChanel = FileChannel.open(dpFile.toPath(), WRITE);
-        dataWriteByteBuffer = ByteBuffer.allocateDirect(1024 * 1024);
+        //100M
+        dataWriteByteBuffer = ByteBuffer.allocateDirect(1024 * 1024 * 100);
 
         indexWriteFileChanel = FileChannel.open(ipFile.toPath(), WRITE);
-        indexWriteByteBuffer = ByteBuffer.allocateDirect(1024 * 1024);
+        //100M
+        indexWriteByteBuffer = ByteBuffer.allocateDirect(1024 * 1024 * 100);
     }
 
     public BlockingQueue<List<WriteRequestWrapper>> getFlushRequestQueue() {
@@ -123,6 +125,9 @@ public class FlushRequestTask extends Thread {
             writeRequestWrapper.getCondition().signal();
             writeRequestWrapper.getLock().unlock();
         }
+
+        dataWriteByteBuffer.clear();
+        indexWriteByteBuffer.clear();
     }
 
     private ColumnValue.ColumnType getColumnType(String columnName, Schema schema) {
