@@ -51,11 +51,11 @@ public class TSDBEngineImpl extends TSDBEngine {
         if (!ipFile.exists()) {
             ipFile.createNewFile();
         }
-        writeTask = new HandleRequestTask(dpFile, ipFile);
-        //开启写入任务
-        writeTask.start();
         //加载索引信息
         IndexBufferHandler.initIndexBuffer(ipFile);
+        //开启写入任务
+        writeTask = new HandleRequestTask(dpFile, ipFile);
+        writeTask.start();
         //初始化数据查询处理器
         queryHandler = new QueryHandler(dpFile);
     }
