@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static java.nio.file.StandardOpenOption.READ;
 
@@ -19,7 +20,7 @@ public class IndexBufferHandler {
             List<IndexBlock> list = INDEX_MAP.get(tableName);
             list.addAll(indexBlockList);
         } else {
-            INDEX_MAP.put(tableName, new ArrayList<>(indexBlockList));
+            INDEX_MAP.put(tableName, new CopyOnWriteArrayList<>(indexBlockList));
         }
     }
 
