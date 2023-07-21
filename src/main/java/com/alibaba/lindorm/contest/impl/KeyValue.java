@@ -14,7 +14,7 @@ public class KeyValue {
     private ColumnValue columnValue;
 
     public short getKeyLength() {
-        return (short) (2 + rowKey.length + 2 + columnName.length + 8);
+        return (short) (2 + rowKey.length + 2 + columnName.length + 8 + 1);
     }
 
     public short getRowKeyLength() {
