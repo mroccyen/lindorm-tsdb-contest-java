@@ -14,7 +14,7 @@ import static java.nio.file.StandardOpenOption.READ;
 public class IndexBufferHandler {
     private static final ConcurrentHashMap<String, List<IndexBlock>> INDEX_MAP = new ConcurrentHashMap<>();
 
-    public static synchronized void offerIndex(String tableName, List<IndexBlock> indexBlockList) {
+    public static void offerIndex(String tableName, List<IndexBlock> indexBlockList) {
         if (INDEX_MAP.containsKey(tableName)) {
             List<IndexBlock> list = INDEX_MAP.get(tableName);
             list.addAll(indexBlockList);
@@ -31,7 +31,7 @@ public class IndexBufferHandler {
         return indexBlockList;
     }
 
-    public static synchronized void shutdown() {
+    public static void shutdown() {
         INDEX_MAP.clear();
     }
 
