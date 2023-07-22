@@ -52,25 +52,25 @@ public class QueryHandler {
                     int bufferPosition = sizeByteBuffer.position();
                     int bufferLimit = sizeByteBuffer.limit();
                     while (bufferPosition < bufferLimit) {
-                        sizeByteBuffer.getShort();
-                        short rowKeyLength = sizeByteBuffer.getShort();
+                        sizeByteBuffer.getInt();
+                        int rowKeyLength = sizeByteBuffer.getInt();
                         byte[] rowKey = new byte[rowKeyLength];
-                        for (short i = 0; i < rowKeyLength; i++) {
+                        for (int i = 0; i < rowKeyLength; i++) {
                             rowKey[i] = sizeByteBuffer.get();
                         }
                         String existRowKey = new String(rowKey);
-                        short columnNameLength = sizeByteBuffer.getShort();
+                        int columnNameLength = sizeByteBuffer.getInt();
                         byte[] columnName = new byte[columnNameLength];
-                        for (short i = 0; i < columnNameLength; i++) {
+                        for (int i = 0; i < columnNameLength; i++) {
                             columnName[i] = sizeByteBuffer.get();
                         }
                         String existColumnName = new String(columnName);
                         long timestamp = sizeByteBuffer.getLong();
                         byte valueType = sizeByteBuffer.get();
-                        short valueLength = sizeByteBuffer.getShort();
+                        int valueLength = sizeByteBuffer.getInt();
                         if (valueType == 1) {
                             byte[] valueBytes = new byte[valueLength];
-                            for (short i = 0; i < valueLength; i++) {
+                            for (int i = 0; i < valueLength; i++) {
                                 valueBytes[i] = sizeByteBuffer.get();
                             }
                             if (existRowKey.equals(rowKeyName) && requestedColumns.contains(existColumnName)) {

@@ -5,23 +5,23 @@ import com.alibaba.lindorm.contest.structs.ColumnValue;
 import java.nio.ByteBuffer;
 
 public class KeyValue {
-    private short rowKeyLength;
+    private int rowKeyLength;
     private byte[] rowKey;
-    private short columnNameLength;
+    private int columnNameLength;
     private byte[] columnName;
     private long timestamp;
     private ColumnValue.ColumnType columnType;
     private ColumnValue columnValue;
 
-    public short getKeyLength() {
-        return (short) (2 + rowKey.length + 2 + columnName.length + 8 + 1);
+    public int getKeyLength() {
+        return 4 + rowKey.length + 4 + columnName.length + 8 + 1;
     }
 
-    public short getRowKeyLength() {
+    public int getRowKeyLength() {
         return rowKeyLength;
     }
 
-    public void setRowKeyLength(short rowKeyLength) {
+    public void setRowKeyLength(int rowKeyLength) {
         this.rowKeyLength = rowKeyLength;
     }
 
@@ -33,11 +33,11 @@ public class KeyValue {
         this.rowKey = rowKey;
     }
 
-    public short getColumnNameLength() {
+    public int getColumnNameLength() {
         return columnNameLength;
     }
 
-    public void setColumnNameLength(short columnNameLength) {
+    public void setColumnNameLength(int columnNameLength) {
         this.columnNameLength = columnNameLength;
     }
 
@@ -65,9 +65,9 @@ public class KeyValue {
         this.columnType = columnType;
     }
 
-    public short getValueLength() {
+    public int getValueLength() {
         if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_STRING)) {
-            return (short) columnValue.getStringValue().remaining();
+            return columnValue.getStringValue().remaining();
         }
         if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_INTEGER)) {
             return 4;

@@ -72,14 +72,14 @@ public class FlushRequestTask extends Thread {
                 int position = dataWriteByteBuffer.position();
                 for (Map.Entry<String, ColumnValue> entity : columns.entrySet()) {
                     KeyValue keyValue = resolveKey(entity.getKey(), entity.getValue(), row.getTimestamp(), vin, schema);
-                    dataWriteByteBuffer.putShort(keyValue.getKeyLength());
-                    dataWriteByteBuffer.putShort(keyValue.getRowKeyLength());
+                    dataWriteByteBuffer.putInt(keyValue.getKeyLength());
+                    dataWriteByteBuffer.putInt(keyValue.getRowKeyLength());
                     dataWriteByteBuffer.put(keyValue.getRowKey());
-                    dataWriteByteBuffer.putShort(keyValue.getColumnNameLength());
+                    dataWriteByteBuffer.putInt(keyValue.getColumnNameLength());
                     dataWriteByteBuffer.put(keyValue.getColumnName());
                     dataWriteByteBuffer.putLong(keyValue.getTimestamp());
                     dataWriteByteBuffer.put(keyValue.getValueType());
-                    dataWriteByteBuffer.putShort(keyValue.getValueLength());
+                    dataWriteByteBuffer.putInt(keyValue.getValueLength());
                     if (keyValue.getColumnType().equals(ColumnValue.ColumnType.COLUMN_TYPE_STRING)) {
                         dataWriteByteBuffer.put(keyValue.getByteBufferValue());
                     }
@@ -92,23 +92,23 @@ public class FlushRequestTask extends Thread {
                 }
                 int p1 = dataWriteByteBuffer.position();
                 IndexBlock indexBlock = new IndexBlock();
-                indexBlock.setOffset((short) (position + dataWriteFileChanel.position()));
-                indexBlock.setDataSize((short) (p1 - position));
+                indexBlock.setOffset((int) (position + dataWriteFileChanel.position()));
+                indexBlock.setDataSize(p1 - position);
                 byte[] tableNameBytes = tableName.getBytes();
-                indexBlock.setTableNameLength((short) tableNameBytes.length);
+                indexBlock.setTableNameLength(tableNameBytes.length);
                 indexBlock.setTableName(tableNameBytes);
-                indexBlock.setRowKeyLength((short) Vin.VIN_LENGTH);
+                indexBlock.setRowKeyLength(Vin.VIN_LENGTH);
                 indexBlock.setRowKey(vin.getVin());
                 indexBlockList.add(indexBlock);
             }
             //保存索引信息
             for (IndexBlock indexBlock : indexBlockList) {
-                indexWriteByteBuffer.putShort(indexBlock.getIndexBlockLength());
+                indexWriteByteBuffer.putInt(indexBlock.getIndexBlockLength());
                 indexWriteByteBuffer.putInt(indexBlock.getOffset());
-                indexWriteByteBuffer.putShort(indexBlock.getDataSize());
-                indexWriteByteBuffer.putShort(indexBlock.getTableNameLength());
+                indexWriteByteBuffer.putInt(indexBlock.getDataSize());
+                indexWriteByteBuffer.putInt(indexBlock.getTableNameLength());
                 indexWriteByteBuffer.put(indexBlock.getTableName());
-                indexWriteByteBuffer.putShort(indexBlock.getRowKeyLength());
+                indexWriteByteBuffer.putInt(indexBlock.getRowKeyLength());
                 indexWriteByteBuffer.put(indexBlock.getRowKey());
             }
             IndexBufferHandler.offerIndex(tableName, indexBlockList);
@@ -140,14 +140,14 @@ public class FlushRequestTask extends Thread {
     private KeyValue resolveKey(String columnNameStr, ColumnValue columnValue, long timestamp, Vin vin, Schema schema) {
         KeyValue keyValue = new KeyValue();
 
-        short rowKeyLength = Vin.VIN_LENGTH;
+        int rowKeyLength = Vin.VIN_LENGTH;
         keyValue.setRowKeyLength(rowKeyLength);
 
         byte[] rowKey = vin.getVin();
         keyValue.setRowKey(rowKey);
 
         byte[] columnName = columnNameStr.getBytes();
-        short columnNameLength = (short) columnName.length;
+        int columnNameLength = columnName.length;
         keyValue.setColumnName(columnName);
         keyValue.setColumnNameLength(columnNameLength);
 

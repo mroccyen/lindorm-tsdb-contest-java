@@ -37,7 +37,7 @@ public class IndexBufferHandler {
     }
 
     public static void initIndexBuffer(File ipFile) throws IOException {
-        ByteBuffer sizeByteBuffer = ByteBuffer.allocateDirect(2);
+        ByteBuffer sizeByteBuffer = ByteBuffer.allocateDirect(4);
         FileChannel fileChannel = FileChannel.open(ipFile.toPath(), READ);
         if (fileChannel.size() == 0) {
             return;
@@ -47,25 +47,25 @@ public class IndexBufferHandler {
             IndexBlock indexBlock = new IndexBlock();
 
             sizeByteBuffer.flip();
-            short indexBlockLength = sizeByteBuffer.getShort();
+            int indexBlockLength = sizeByteBuffer.getInt();
             ByteBuffer dataByteBuffer = ByteBuffer.allocateDirect(indexBlockLength);
             fileChannel.read(dataByteBuffer);
             dataByteBuffer.flip();
             int offset = dataByteBuffer.getInt();
             indexBlock.setOffset(offset);
-            short dataSize = dataByteBuffer.getShort();
+            int dataSize = dataByteBuffer.getInt();
             indexBlock.setDataSize(dataSize);
-            short tableNameLength = dataByteBuffer.getShort();
+            int tableNameLength = dataByteBuffer.getInt();
             indexBlock.setTableNameLength(tableNameLength);
             byte[] tableName = new byte[tableNameLength];
-            for (short i = 0; i < tableNameLength; i++) {
+            for (int i = 0; i < tableNameLength; i++) {
                 tableName[i] = dataByteBuffer.get();
             }
             indexBlock.setTableName(tableName);
-            short rowKeyLength = dataByteBuffer.getShort();
+            int rowKeyLength = dataByteBuffer.getInt();
             indexBlock.setRowKeyLength(rowKeyLength);
             byte[] rowKey = new byte[rowKeyLength];
-            for (short i = 0; i < rowKeyLength; i++) {
+            for (int i = 0; i < rowKeyLength; i++) {
                 rowKey[i] = dataByteBuffer.get();
             }
             indexBlock.setRowKey(rowKey);
