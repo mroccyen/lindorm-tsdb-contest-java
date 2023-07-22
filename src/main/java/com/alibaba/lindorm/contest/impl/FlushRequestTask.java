@@ -92,7 +92,7 @@ public class FlushRequestTask extends Thread {
                 }
                 int p1 = dataWriteByteBuffer.position();
                 IndexBlock indexBlock = new IndexBlock();
-                indexBlock.setOffset((int) (position + dataWriteFileChanel.position()));
+                indexBlock.setOffset(position + dataWriteFileChanel.position());
                 indexBlock.setDataSize(p1 - position);
                 byte[] tableNameBytes = tableName.getBytes();
                 indexBlock.setTableNameLength(tableNameBytes.length);
@@ -104,7 +104,7 @@ public class FlushRequestTask extends Thread {
             //保存索引信息
             for (IndexBlock indexBlock : indexBlockList) {
                 indexWriteByteBuffer.putInt(indexBlock.getIndexBlockLength());
-                indexWriteByteBuffer.putInt(indexBlock.getOffset());
+                indexWriteByteBuffer.putLong(indexBlock.getOffset());
                 indexWriteByteBuffer.putInt(indexBlock.getDataSize());
                 indexWriteByteBuffer.putInt(indexBlock.getTableNameLength());
                 indexWriteByteBuffer.put(indexBlock.getTableName());

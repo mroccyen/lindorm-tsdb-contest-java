@@ -51,7 +51,7 @@ public class IndexBufferHandler {
             ByteBuffer dataByteBuffer = ByteBuffer.allocateDirect(indexBlockLength);
             fileChannel.read(dataByteBuffer);
             dataByteBuffer.flip();
-            int offset = dataByteBuffer.getInt();
+            long offset = dataByteBuffer.getLong();
             indexBlock.setOffset(offset);
             int dataSize = dataByteBuffer.getInt();
             indexBlock.setDataSize(dataSize);
