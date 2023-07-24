@@ -44,8 +44,7 @@ public class IndexBufferHandler {
             return;
         }
         System.out.println(">>> load exist index data begin");
-        int sizeByteBufferRead = fileChannel.read(sizeByteBuffer);
-        while (sizeByteBufferRead != -1) {
+        while (fileChannel.read(sizeByteBuffer) > 0) {
             IndexBlock indexBlock = new IndexBlock();
 
             sizeByteBuffer.flip();
@@ -75,7 +74,6 @@ public class IndexBufferHandler {
 
             dataByteBuffer = null;
             sizeByteBuffer.clear();
-            sizeByteBufferRead = fileChannel.read(sizeByteBuffer);
         }
         sizeByteBuffer = null;
         fileChannel.close();
