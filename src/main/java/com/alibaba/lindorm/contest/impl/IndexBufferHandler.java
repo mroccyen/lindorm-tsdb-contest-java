@@ -43,9 +43,8 @@ public class IndexBufferHandler {
             return;
         }
         System.out.println(">>> load exist index data begin");
-        System.out.println(">>> exist index data size: " + fileChannel.size());
+        System.out.println(">>> exist index file size: " + fileChannel.size());
         MappedByteBuffer dataByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
-        dataByteBuffer.flip();
         while (dataByteBuffer.hasRemaining()) {
             IndexBlock indexBlock = new IndexBlock();
             //读取索引长度
@@ -71,6 +70,7 @@ public class IndexBufferHandler {
             offerIndex(new String(tableName), Collections.singletonList(indexBlock));
         }
         fileChannel.close();
+        System.out.println(">>> exist index data size: " + INDEX_MAP.size());
         System.out.println(">>> load exist index data complete");
     }
 }
