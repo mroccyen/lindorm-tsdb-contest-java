@@ -2,6 +2,7 @@ package com.alibaba.lindorm.contest.impl;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
@@ -45,31 +46,58 @@ public class IndexBufferHandler {
         System.out.println(">>> load exist index data begin");
         System.out.println(">>> exist index file size: " + fileChannel.size());
         MappedByteBuffer dataByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
+        long start = System.currentTimeMillis();
         while (dataByteBuffer.hasRemaining()) {
             IndexBlock indexBlock = new IndexBlock();
             //读取索引长度
-            dataByteBuffer.getInt();
-            long offset = dataByteBuffer.getLong();
+            for (int i = 0; i < 4; i++) {
+                dataByteBuffer.get();
+            }
+            byte[] offsetByte = new byte[8];
+            for (int i = 0; i < 8; i++) {
+                offsetByte[i] = dataByteBuffer.get();
+            }
+            long offset = ByteBuffer.wrap(offsetByte).getLong();
             indexBlock.setOffset(offset);
-            int dataSize = dataByteBuffer.getInt();
+
+            byte[] dataSizeByte = new byte[4];
+            for (int i = 0; i < 4; i++) {
+                dataSizeByte[i] = dataByteBuffer.get();
+            }
+            int dataSize = ByteBuffer.wrap(dataSizeByte).getInt();
             indexBlock.setDataSize(dataSize);
-            int tableNameLength = dataByteBuffer.getInt();
+
+            byte[] tableNameLengthByte = new byte[4];
+            for (int i = 0; i < 4; i++) {
+                tableNameLengthByte[i] = dataByteBuffer.get();
+            }
+            int tableNameLength = ByteBuffer.wrap(tableNameLengthByte).getInt();
             indexBlock.setTableNameLength(tableNameLength);
+
             byte[] tableName = new byte[tableNameLength];
             for (int i = 0; i < tableNameLength; i++) {
                 tableName[i] = dataByteBuffer.get();
             }
             indexBlock.setTableName(tableName);
-            int rowKeyLength = dataByteBuffer.getInt();
+
+            byte[] rowKeyLengthByte = new byte[4];
+            for (int i = 0; i < 4; i++) {
+                rowKeyLengthByte[i] = dataByteBuffer.get();
+            }
+            int rowKeyLength = ByteBuffer.wrap(rowKeyLengthByte).getInt();
             indexBlock.setRowKeyLength(rowKeyLength);
+
             byte[] rowKey = new byte[rowKeyLength];
             for (int i = 0; i < rowKeyLength; i++) {
                 rowKey[i] = dataByteBuffer.get();
             }
             indexBlock.setRowKey(rowKey);
+
             offerIndex(new String(tableName), Collections.singletonList(indexBlock));
         }
         fileChannel.close();
+        long end = System.currentTimeMillis();
+        System.out.println(">>> load exist index time: " + (end - start));
         System.out.println(">>> exist index data size: " + INDEX_MAP.size());
         System.out.println(">>> load exist index data complete");
     }
