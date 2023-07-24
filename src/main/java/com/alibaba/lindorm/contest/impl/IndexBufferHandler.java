@@ -3,6 +3,7 @@ package com.alibaba.lindorm.contest.impl;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -37,18 +38,19 @@ public class IndexBufferHandler {
     }
 
     public static void initIndexBuffer(File ipFile) throws IOException {
-        ByteBuffer sizeByteBuffer = ByteBuffer.allocateDirect(4);
         FileChannel fileChannel = FileChannel.open(ipFile.toPath(), READ);
         if (fileChannel.size() == 0) {
             System.out.println(">>> no need load index data");
             return;
         }
         System.out.println(">>> load exist index data begin");
-        while (fileChannel.read(sizeByteBuffer) > 0) {
+        System.out.println(">>> exist index data size: " + fileChannel.size());
+        MappedByteBuffer mappedBuf = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
+        mappedBuf.flip();
+        while (mappedBuf.hasRemaining()) {
             IndexBlock indexBlock = new IndexBlock();
 
-            sizeByteBuffer.flip();
-            int indexBlockLength = sizeByteBuffer.getInt();
+            int indexBlockLength = mappedBuf.getInt();
             ByteBuffer dataByteBuffer = ByteBuffer.allocateDirect(indexBlockLength);
             fileChannel.read(dataByteBuffer);
             dataByteBuffer.flip();
@@ -71,11 +73,7 @@ public class IndexBufferHandler {
             }
             indexBlock.setRowKey(rowKey);
             offerIndex(new String(tableName), Collections.singletonList(indexBlock));
-
-            dataByteBuffer = null;
-            sizeByteBuffer.clear();
         }
-        sizeByteBuffer = null;
         fileChannel.close();
         System.out.println(">>> load exist index data complete");
     }
