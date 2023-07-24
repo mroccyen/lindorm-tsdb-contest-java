@@ -114,32 +114,47 @@ public class QueryHandler {
         for (Map.Entry<Vin, List<QueryResult>> entity : vinMap.entrySet()) {
             List<QueryResult> value = entity.getValue();
             Map<String, List<QueryResult>> map = value.stream().collect(Collectors.groupingBy(QueryResult::getColumnName));
-            Map<String, ColumnValue> columns = new HashMap<>();
+            //存储最新值查询的列值信息
+            Map<String, ColumnValue> latestQueryColumns = new HashMap<>();
+            //存储范围查询的列值信息
+            Map<Long, Map<String, ColumnValue>> timeStampValueMap = new HashMap<>();
             long timestamp = 0;
             for (Map.Entry<String, List<QueryResult>> item : map.entrySet()) {
+                //范围查询
                 if (timeLowerBound != -1 && timeUpperBound != -1) {
                     for (QueryResult queryResult : item.getValue()) {
                         if (queryResult.getTimestamp() >= timeLowerBound && queryResult.getTimestamp() < timeUpperBound) {
-                            columns.put(item.getKey(), queryResult.getColumnValue());
-                            if (queryResult.getTimestamp() > timestamp) {
-                                timestamp = queryResult.getTimestamp();
+                            Map<String, ColumnValue> columnValueMap = timeStampValueMap.get(queryResult.getTimestamp());
+                            if (columnValueMap == null) {
+                                columnValueMap = new HashMap<>();
+                                columnValueMap.put(item.getKey(), queryResult.getColumnValue());
+                                timeStampValueMap.put(queryResult.getTimestamp(), columnValueMap);
+                            } else {
+                                columnValueMap.put(item.getKey(), queryResult.getColumnValue());
                             }
                         }
                     }
                 } else {
+                    //最新值查询
                     Optional<QueryResult> first = item.getValue().stream().max(Comparator.comparingLong(QueryResult::getTimestamp));
                     if (first.isPresent()) {
                         QueryResult queryResult = first.get();
-                        columns.put(item.getKey(), queryResult.getColumnValue());
+                        latestQueryColumns.put(item.getKey(), queryResult.getColumnValue());
                         if (queryResult.getTimestamp() > timestamp) {
                             timestamp = queryResult.getTimestamp();
                         }
                     }
                 }
             }
-            if (columns.size() > 0) {
-                Row row = new Row(entity.getKey(), timestamp, columns);
+            if (latestQueryColumns.size() > 0) {
+                Row row = new Row(entity.getKey(), timestamp, latestQueryColumns);
                 result.add(row);
+            }
+            if (timeStampValueMap.size() > 0) {
+                for (Map.Entry<Long, Map<String, ColumnValue>> e : timeStampValueMap.entrySet()) {
+                    Row row = new Row(entity.getKey(), e.getKey(), e.getValue());
+                    result.add(row);
+                }
             }
         }
         return result;
