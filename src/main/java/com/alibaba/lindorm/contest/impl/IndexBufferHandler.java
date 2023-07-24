@@ -2,7 +2,6 @@ package com.alibaba.lindorm.contest.impl;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
@@ -55,17 +54,17 @@ public class IndexBufferHandler {
 
             byte[] offsetByte = new byte[8];
             dataByteBuffer.get(offsetByte);
-            long offset = ByteBuffer.wrap(offsetByte).getLong();
+            long offset = ByteArrayUtil.byteArray2Long_Big_Endian(offsetByte);
             indexBlock.setOffset(offset);
 
             byte[] dataSizeByte = new byte[4];
             dataByteBuffer.get(dataSizeByte);
-            int dataSize = ByteBuffer.wrap(dataSizeByte).getInt();
+            int dataSize = ByteArrayUtil.byteArray2Int_Big_Endian(dataSizeByte);
             indexBlock.setDataSize(dataSize);
 
             byte[] tableNameLengthByte = new byte[4];
             dataByteBuffer.get(tableNameLengthByte);
-            int tableNameLength = ByteBuffer.wrap(tableNameLengthByte).getInt();
+            int tableNameLength = ByteArrayUtil.byteArray2Int_Big_Endian(tableNameLengthByte);
             indexBlock.setTableNameLength(tableNameLength);
 
             byte[] tableName = new byte[tableNameLength];
@@ -74,7 +73,7 @@ public class IndexBufferHandler {
 
             byte[] rowKeyLengthByte = new byte[4];
             dataByteBuffer.get(rowKeyLengthByte);
-            int rowKeyLength = ByteBuffer.wrap(rowKeyLengthByte).getInt();
+            int rowKeyLength = ByteArrayUtil.byteArray2Int_Big_Endian(rowKeyLengthByte);
             indexBlock.setRowKeyLength(rowKeyLength);
 
             byte[] rowKey = new byte[rowKeyLength];
