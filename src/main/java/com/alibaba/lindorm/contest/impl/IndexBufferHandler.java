@@ -50,47 +50,35 @@ public class IndexBufferHandler {
         while (dataByteBuffer.hasRemaining()) {
             IndexBlock indexBlock = new IndexBlock();
             //读取索引长度
-            for (int i = 0; i < 4; i++) {
-                dataByteBuffer.get();
-            }
+            byte[] indexDataLengthByte = new byte[4];
+            dataByteBuffer.get(indexDataLengthByte);
+
             byte[] offsetByte = new byte[8];
-            for (int i = 0; i < 8; i++) {
-                offsetByte[i] = dataByteBuffer.get();
-            }
+            dataByteBuffer.get(offsetByte);
             long offset = ByteBuffer.wrap(offsetByte).getLong();
             indexBlock.setOffset(offset);
 
             byte[] dataSizeByte = new byte[4];
-            for (int i = 0; i < 4; i++) {
-                dataSizeByte[i] = dataByteBuffer.get();
-            }
+            dataByteBuffer.get(dataSizeByte);
             int dataSize = ByteBuffer.wrap(dataSizeByte).getInt();
             indexBlock.setDataSize(dataSize);
 
             byte[] tableNameLengthByte = new byte[4];
-            for (int i = 0; i < 4; i++) {
-                tableNameLengthByte[i] = dataByteBuffer.get();
-            }
+            dataByteBuffer.get(tableNameLengthByte);
             int tableNameLength = ByteBuffer.wrap(tableNameLengthByte).getInt();
             indexBlock.setTableNameLength(tableNameLength);
 
             byte[] tableName = new byte[tableNameLength];
-            for (int i = 0; i < tableNameLength; i++) {
-                tableName[i] = dataByteBuffer.get();
-            }
+            dataByteBuffer.get(tableName);
             indexBlock.setTableName(tableName);
 
             byte[] rowKeyLengthByte = new byte[4];
-            for (int i = 0; i < 4; i++) {
-                rowKeyLengthByte[i] = dataByteBuffer.get();
-            }
+            dataByteBuffer.get(rowKeyLengthByte);
             int rowKeyLength = ByteBuffer.wrap(rowKeyLengthByte).getInt();
             indexBlock.setRowKeyLength(rowKeyLength);
 
             byte[] rowKey = new byte[rowKeyLength];
-            for (int i = 0; i < rowKeyLength; i++) {
-                rowKey[i] = dataByteBuffer.get();
-            }
+            dataByteBuffer.get(rowKey);
             indexBlock.setRowKey(rowKey);
 
             offerIndex(new String(tableName), Collections.singletonList(indexBlock));
