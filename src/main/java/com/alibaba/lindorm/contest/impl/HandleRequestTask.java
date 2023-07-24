@@ -13,6 +13,8 @@ public class HandleRequestTask extends Thread {
 
     private final FlushRequestTask flushRequestTask;
 
+    private boolean stop = false;
+
     public HandleRequestTask(File dpFile, File ipFile) throws IOException {
         flushRequestTask = new FlushRequestTask(dpFile, ipFile);
         flushRequestTask.start();
@@ -29,7 +31,7 @@ public class HandleRequestTask extends Thread {
     @Override
     public void run() {
         try {
-            while (true) {
+            while (!stop) {
                 List<WriteRequestWrapper> writeRequestWrapperList = new ArrayList<>();
                 while (true) {
                     WriteRequestWrapper writeRequestWrapper = writeRequestQueue.poll(5, TimeUnit.MILLISECONDS);
@@ -52,5 +54,10 @@ public class HandleRequestTask extends Thread {
             System.out.println(e.getMessage());
             System.exit(-1);
         }
+    }
+
+    public void shutdown() {
+        flushRequestTask.shutdown();
+        stop = true;
     }
 }

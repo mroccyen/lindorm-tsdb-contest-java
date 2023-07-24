@@ -25,6 +25,8 @@ public class FlushRequestTask extends Thread {
 
     private final ByteBuffer indexWriteByteBuffer;
 
+    private boolean stop = false;
+
     public FlushRequestTask(File dpFile, File ipFile) throws IOException {
         dataWriteFileChanel = FileChannel.open(dpFile.toPath(), APPEND);
         //100M
@@ -39,10 +41,14 @@ public class FlushRequestTask extends Thread {
         return flushRequestQueue;
     }
 
+    public void shutdown() {
+        stop = true;
+    }
+
     @Override
     public void run() {
         try {
-            while (true) {
+            while (!stop) {
                 List<WriteRequestWrapper> writeRequestWrapperList = flushRequestQueue.poll(5, TimeUnit.MILLISECONDS);
                 if (writeRequestWrapperList != null && writeRequestWrapperList.size() > 0) {
                     //执行刷盘操作

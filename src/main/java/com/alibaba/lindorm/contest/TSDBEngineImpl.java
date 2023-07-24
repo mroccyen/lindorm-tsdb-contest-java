@@ -68,6 +68,7 @@ public class TSDBEngineImpl extends TSDBEngine {
 
     @Override
     public void shutdown() {
+        writeTask.shutdown();
         IndexBufferHandler.shutdown();
     }
 
