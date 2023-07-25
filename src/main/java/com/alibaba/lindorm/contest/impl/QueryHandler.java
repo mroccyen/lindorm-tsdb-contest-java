@@ -41,136 +41,90 @@ public class QueryHandler {
     }
 
     private ArrayList<Row> query(String tableName, Collection<Vin> vinList, Set<String> requestedColumns, long timeLowerBound, long timeUpperBound) throws IOException {
+        //获取当前表所有的索引信息
         List<IndexBlock> indexBlocks = IndexBufferHandler.getIndexBlocks(tableName);
-        Map<String, List<IndexBlock>> rowKeyMap = indexBlocks.stream().collect(Collectors.groupingBy(i -> new String(i.getRowKey())));
-        Map<Vin, List<QueryResult>> vinMap = new HashMap<>();
-        Map<Vin, Long> vinLatestTimestampMap = new HashMap<>();
-        for (Vin vin : vinList) {
-            List<QueryResult> queryResultList = new ArrayList<>();
-            //最新的timeStamp
-            long latestTimeStamp = 0;
-            String rowKeyName = new String(vin.getVin());
-            if (rowKeyMap.containsKey(rowKeyName)) {
-                List<IndexBlock> indexBlockList = rowKeyMap.get(rowKeyName);
-                for (IndexBlock indexBlock : indexBlockList) {
-                    //更新行最新的时间戳
-                    if (indexBlock.getTimestamp() > latestTimeStamp) {
-                        latestTimeStamp = indexBlock.getTimestamp();
-                    }
+        Map<String, Vin> vinNameMap = vinList.stream().collect(Collectors.toMap(i -> new String(i.getVin()), i -> i));
+        List<Row> rowList = new ArrayList<>();
+        for (IndexBlock indexBlock : indexBlocks) {
+            String rowKeyName = new String(indexBlock.getRowKey());
+            Map<String, ColumnValue> columns = new HashMap<>();
+            if (vinNameMap.containsKey(rowKeyName)) {
+                Vin vin = vinNameMap.get(rowKeyName);
+                long t = indexBlock.getTimestamp();
 
-                    ByteBuffer sizeByteBuffer = ByteBuffer.allocateDirect(indexBlock.getDataSize());
-                    FileChannel fileChannel = FileChannel.open(dpFile.toPath(), READ);
-                    if (fileChannel.size() == 0) {
-                        return new ArrayList<>();
-                    }
-                    fileChannel.read(sizeByteBuffer, indexBlock.getOffset());
-                    sizeByteBuffer.flip();
-                    int bufferPosition = sizeByteBuffer.position();
-                    int bufferLimit = sizeByteBuffer.limit();
-                    while (bufferPosition < bufferLimit) {
-                        sizeByteBuffer.getInt();
-                        int rowKeyLength = sizeByteBuffer.getInt();
-                        byte[] rowKey = new byte[rowKeyLength];
-                        for (int i = 0; i < rowKeyLength; i++) {
-                            rowKey[i] = sizeByteBuffer.get();
-                        }
-                        String existRowKey = new String(rowKey);
-                        int columnNameLength = sizeByteBuffer.getInt();
-                        byte[] columnName = new byte[columnNameLength];
-                        for (int i = 0; i < columnNameLength; i++) {
-                            columnName[i] = sizeByteBuffer.get();
-                        }
-                        String existColumnName = new String(columnName);
-                        long timestamp = sizeByteBuffer.getLong();
-                        byte valueType = sizeByteBuffer.get();
-                        int valueLength = sizeByteBuffer.getInt();
-                        if (valueType == 1) {
-                            byte[] valueBytes = new byte[valueLength];
-                            for (int i = 0; i < valueLength; i++) {
-                                valueBytes[i] = sizeByteBuffer.get();
-                            }
-                            if (existRowKey.equals(rowKeyName) && requestedColumns.contains(existColumnName)) {
-                                QueryResult queryResult = new QueryResult();
-                                queryResult.setTimestamp(timestamp);
-                                queryResult.setColumnName(existColumnName);
-                                queryResult.setColumnValue(new ColumnValue.StringColumn(ByteBuffer.wrap(valueBytes)));
-                                queryResultList.add(queryResult);
-                            }
-                        }
-                        if (valueType == 2) {
-                            int value = sizeByteBuffer.getInt();
-                            if (existRowKey.equals(rowKeyName) && requestedColumns.contains(existColumnName)) {
-                                QueryResult queryResult = new QueryResult();
-                                queryResult.setTimestamp(timestamp);
-                                queryResult.setColumnName(existColumnName);
-                                queryResult.setColumnValue(new ColumnValue.IntegerColumn(value));
-                                queryResultList.add(queryResult);
-                            }
-                        }
-                        if (valueType == 3) {
-                            double value = sizeByteBuffer.getDouble();
-                            if (existRowKey.equals(rowKeyName) && requestedColumns.contains(existColumnName)) {
-                                QueryResult queryResult = new QueryResult();
-                                queryResult.setTimestamp(timestamp);
-                                queryResult.setColumnName(existColumnName);
-                                queryResult.setColumnValue(new ColumnValue.DoubleFloatColumn(value));
-                                queryResultList.add(queryResult);
-                            }
-                        }
-                        bufferPosition = sizeByteBuffer.position();
-                        bufferLimit = sizeByteBuffer.limit();
-                    }
-                    fileChannel.close();
+                ByteBuffer sizeByteBuffer = ByteBuffer.allocateDirect(indexBlock.getDataSize());
+                FileChannel fileChannel = FileChannel.open(dpFile.toPath(), READ);
+                if (fileChannel.size() == 0) {
+                    return new ArrayList<>();
                 }
-            }
-            if (queryResultList.size() > 0) {
-                vinMap.put(vin, queryResultList);
-                vinLatestTimestampMap.put(vin, latestTimeStamp);
+                fileChannel.read(sizeByteBuffer, indexBlock.getOffset());
+                sizeByteBuffer.flip();
+                int bufferPosition = sizeByteBuffer.position();
+                int bufferLimit = sizeByteBuffer.limit();
+                while (bufferPosition < bufferLimit) {
+                    sizeByteBuffer.getInt();
+                    int rowKeyLength = sizeByteBuffer.getInt();
+                    byte[] rowKey = new byte[rowKeyLength];
+                    for (int i = 0; i < rowKeyLength; i++) {
+                        rowKey[i] = sizeByteBuffer.get();
+                    }
+                    String existRowKey = new String(rowKey);
+                    int columnNameLength = sizeByteBuffer.getInt();
+                    byte[] columnName = new byte[columnNameLength];
+                    for (int i = 0; i < columnNameLength; i++) {
+                        columnName[i] = sizeByteBuffer.get();
+                    }
+                    String existColumnName = new String(columnName);
+                    long timestamp = sizeByteBuffer.getLong();
+                    byte valueType = sizeByteBuffer.get();
+                    int valueLength = sizeByteBuffer.getInt();
+                    if (valueType == 1) {
+                        byte[] valueBytes = new byte[valueLength];
+                        for (int i = 0; i < valueLength; i++) {
+                            valueBytes[i] = sizeByteBuffer.get();
+                        }
+                        if (requestedColumns.contains(existColumnName)) {
+                            columns.put(existColumnName, new ColumnValue.StringColumn(ByteBuffer.wrap(valueBytes)));
+                        }
+                    }
+                    if (valueType == 2) {
+                        int value = sizeByteBuffer.getInt();
+                        if (requestedColumns.contains(existColumnName)) {
+                            columns.put(existColumnName, new ColumnValue.IntegerColumn(value));
+                        }
+                    }
+                    if (valueType == 3) {
+                        double value = sizeByteBuffer.getDouble();
+                        if (requestedColumns.contains(existColumnName)) {
+                            columns.put(existColumnName, new ColumnValue.DoubleFloatColumn(value));
+                        }
+                    }
+                    bufferPosition = sizeByteBuffer.position();
+                    bufferLimit = sizeByteBuffer.limit();
+                }
+                fileChannel.close();
+                //构建Row
+                Row row = new Row(vin, t, columns);
+                rowList.add(row);
             }
         }
 
         ArrayList<Row> result = new ArrayList<>();
-        for (Map.Entry<Vin, List<QueryResult>> entity : vinMap.entrySet()) {
-            List<QueryResult> value = entity.getValue();
-            Map<String, List<QueryResult>> map = value.stream().collect(Collectors.groupingBy(QueryResult::getColumnName));
-            //存储最新值查询的列值信息
-            Map<String, ColumnValue> latestQueryColumns = new HashMap<>();
-            //存储范围查询的列值信息
-            Map<Long, Map<String, ColumnValue>> timeStampValueMap = new HashMap<>();
-            for (Map.Entry<String, List<QueryResult>> item : map.entrySet()) {
-                //范围查询
-                if (timeLowerBound != -1 && timeUpperBound != -1) {
-                    for (QueryResult queryResult : item.getValue()) {
-                        if (queryResult.getTimestamp() >= timeLowerBound && queryResult.getTimestamp() < timeUpperBound) {
-                            Map<String, ColumnValue> columnValueMap = timeStampValueMap.get(queryResult.getTimestamp());
-                            if (columnValueMap == null) {
-                                columnValueMap = new HashMap<>();
-                                columnValueMap.put(item.getKey(), queryResult.getColumnValue());
-                                timeStampValueMap.put(queryResult.getTimestamp(), columnValueMap);
-                            } else {
-                                columnValueMap.put(item.getKey(), queryResult.getColumnValue());
-                            }
-                        }
-                    }
-                } else {
-                    //最新值查询
-                    Optional<QueryResult> first = item.getValue().stream().max(Comparator.comparingLong(QueryResult::getTimestamp));
-                    if (first.isPresent()) {
-                        QueryResult queryResult = first.get();
-                        latestQueryColumns.put(item.getKey(), queryResult.getColumnValue());
-                    }
-                }
-            }
-            if (latestQueryColumns.size() > 0) {
-                Row row = new Row(entity.getKey(), vinLatestTimestampMap.get(entity.getKey()), latestQueryColumns);
-                result.add(row);
-            }
-            if (timeStampValueMap.size() > 0) {
-                for (Map.Entry<Long, Map<String, ColumnValue>> e : timeStampValueMap.entrySet()) {
-                    Row row = new Row(entity.getKey(), e.getKey(), e.getValue());
+        Map<Vin, Row> resultMap = new HashMap<>();
+        for (Row row : rowList) {
+            //范围查询
+            if (timeLowerBound != -1 && timeUpperBound != -1) {
+                if (row.getTimestamp() >= timeLowerBound && row.getTimestamp() < timeUpperBound) {
                     result.add(row);
                 }
+            } else {
+                if (!resultMap.containsKey(row.getVin()) || resultMap.get(row.getVin()).getTimestamp() < row.getTimestamp()) {
+                    resultMap.put(row.getVin(), row);
+                }
             }
+        }
+        if (resultMap.size() > 0) {
+            return new ArrayList<>(resultMap.values());
         }
         return result;
     }

@@ -85,7 +85,7 @@ public class MyEvaluationSample {
             //read
             ArrayList<Vin> vinList1 = new ArrayList<>();
             vinList1.add(new Vin(str.getBytes(StandardCharsets.UTF_8)));
-            Set<String> requestedColumns1 = new HashSet<>(Arrays.asList("col2", "col3"));
+            Set<String> requestedColumns1 = new HashSet<>(Arrays.asList("col1", "col2", "col3"));
             ArrayList<Row> resultSet1 = tsdbEngineSample.executeLatestQuery(new LatestQueryRequest("test", vinList1, requestedColumns1));
             showResult(resultSet1);
 
@@ -130,7 +130,7 @@ public class MyEvaluationSample {
             tsdbEngineSample.upsert(new WriteRequest("test", rowList));
             ArrayList<Row> resultSet3 = tsdbEngineSample.executeLatestQuery(new LatestQueryRequest("test", vinList3, requestedColumns3));
             showResult(resultSet3);
-            resultSet3 = tsdbEngineSample.executeTimeRangeQuery(new TimeRangeQueryRequest("test", new Vin(str.getBytes(StandardCharsets.UTF_8)), requestedColumns3, 1, 3));
+            resultSet3 = tsdbEngineSample.executeTimeRangeQuery(new TimeRangeQueryRequest("test", new Vin(str.getBytes(StandardCharsets.UTF_8)), requestedColumns3, 33, 34));
             showResult(resultSet3);
 
             tsdbEngineSample.shutdown();
