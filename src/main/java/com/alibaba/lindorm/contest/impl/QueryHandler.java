@@ -19,6 +19,9 @@ public class QueryHandler {
     }
 
     public ArrayList<Row> executeLatestQuery(LatestQueryRequest pReadReq) throws IOException {
+        List<IndexBlock> indexBlocks = IndexBufferHandler.getIndexBlocks(pReadReq.getTableName());
+        int size = indexBlocks.size();
+        System.out.println(">>> executeLatestQuery " + pReadReq.getTableName() + " exist index data size: " + size);
         long start = System.currentTimeMillis();
         String tableName = pReadReq.getTableName();
         Collection<Vin> vinList = pReadReq.getVins();
@@ -30,6 +33,9 @@ public class QueryHandler {
     }
 
     public ArrayList<Row> executeTimeRangeQuery(TimeRangeQueryRequest trReadReq) throws IOException {
+        List<IndexBlock> indexBlocks = IndexBufferHandler.getIndexBlocks(trReadReq.getTableName());
+        int size = indexBlocks.size();
+        System.out.println(">>> executeTimeRangeQuery " + trReadReq.getTableName() + " exist index data size: " + size);
         long start = System.currentTimeMillis();
         String tableName = trReadReq.getTableName();
         Vin vin = trReadReq.getVin();
