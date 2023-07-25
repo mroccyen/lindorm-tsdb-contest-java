@@ -19,17 +19,25 @@ public class QueryHandler {
     }
 
     public ArrayList<Row> executeLatestQuery(LatestQueryRequest pReadReq) throws IOException {
+        long start = System.currentTimeMillis();
         String tableName = pReadReq.getTableName();
         Collection<Vin> vinList = pReadReq.getVins();
         Set<String> requestedColumns = pReadReq.getRequestedColumns();
-        return query(tableName, vinList, requestedColumns, -1, -1);
+        ArrayList<Row> result = query(tableName, vinList, requestedColumns, -1, -1);
+        long end = System.currentTimeMillis();
+        System.out.println("----- executeLatestQuery time: " + (end - start));
+        return result;
     }
 
     public ArrayList<Row> executeTimeRangeQuery(TimeRangeQueryRequest trReadReq) throws IOException {
+        long start = System.currentTimeMillis();
         String tableName = trReadReq.getTableName();
         Vin vin = trReadReq.getVin();
         Set<String> requestedColumns = trReadReq.getRequestedFields();
-        return query(tableName, Collections.singletonList(vin), requestedColumns, trReadReq.getTimeLowerBound(), trReadReq.getTimeUpperBound());
+        ArrayList<Row> result = query(tableName, Collections.singletonList(vin), requestedColumns, trReadReq.getTimeLowerBound(), trReadReq.getTimeUpperBound());
+        long end = System.currentTimeMillis();
+        System.out.println("----- executeTimeRangeQuery time: " + (end - start));
+        return result;
     }
 
     private ArrayList<Row> query(String tableName, Collection<Vin> vinList, Set<String> requestedColumns, long timeLowerBound, long timeUpperBound) throws IOException {

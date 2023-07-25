@@ -83,7 +83,7 @@ public class IndexBufferHandler {
         }
         fileChannel.close();
         long end = System.currentTimeMillis();
-        System.out.println(">>> load exist index time: " + (end - start));
+        System.out.println("----- load exist index time: " + (end - start));
         System.out.println(">>> exist index data size: " + INDEX_MAP.size());
         System.out.println(">>> load exist index data complete");
     }
