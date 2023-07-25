@@ -1,15 +1,22 @@
 package com.alibaba.lindorm.contest.impl;
 
-import com.alibaba.lindorm.contest.structs.*;
+import com.alibaba.lindorm.contest.structs.ColumnValue;
+import com.alibaba.lindorm.contest.structs.Row;
+import com.alibaba.lindorm.contest.structs.Schema;
+import com.alibaba.lindorm.contest.structs.Vin;
+import com.alibaba.lindorm.contest.structs.WriteRequest;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 
 import static java.nio.file.StandardOpenOption.APPEND;
@@ -66,7 +73,7 @@ public class FlushRequestTask extends Thread {
         Iterator<WriteRequestWrapper> iterator = writeRequestWrapperList.iterator();
         while (iterator.hasNext()) {
             WriteRequestWrapper writeRequestWrapper = iterator.next();
-            List<IndexBlock> indexBlockList = new CopyOnWriteArrayList<>();
+            List<IndexBlock> indexBlockList = new ArrayList<>();
 
             WriteRequest writeRequest = writeRequestWrapper.getWriteRequest();
             String tableName = writeRequest.getTableName();
