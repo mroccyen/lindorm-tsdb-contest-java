@@ -2,6 +2,7 @@ package com.alibaba.lindorm.contest.impl;
 
 public class IndexBlock {
     private long offset;
+    private long timestamp;
     private int dataSize;
     private int tableNameLength;
     private byte[] tableName;
@@ -9,7 +10,7 @@ public class IndexBlock {
     private byte[] rowKey;
 
     public int getIndexBlockLength() {
-        return 8 + 4 + 4 + tableName.length + 4 + rowKey.length;
+        return 8 + 8 + 4 + 4 + tableName.length + 4 + rowKey.length;
     }
 
     public long getOffset() {
@@ -18,6 +19,14 @@ public class IndexBlock {
 
     public void setOffset(long offset) {
         this.offset = offset;
+    }
+
+    public long getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(long timestamp) {
+        this.timestamp = timestamp;
     }
 
     public int getDataSize() {

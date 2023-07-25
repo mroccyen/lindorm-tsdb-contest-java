@@ -44,12 +44,20 @@ public class QueryHandler {
         List<IndexBlock> indexBlocks = IndexBufferHandler.getIndexBlocks(tableName);
         Map<String, List<IndexBlock>> rowKeyMap = indexBlocks.stream().collect(Collectors.groupingBy(i -> new String(i.getRowKey())));
         Map<Vin, List<QueryResult>> vinMap = new HashMap<>();
+        Map<Vin, Long> vinLatestTimestampMap = new HashMap<>();
         for (Vin vin : vinList) {
             List<QueryResult> queryResultList = new ArrayList<>();
+            //最新的timeStamp
+            long latestTimeStamp = 0;
             String rowKeyName = new String(vin.getVin());
             if (rowKeyMap.containsKey(rowKeyName)) {
                 List<IndexBlock> indexBlockList = rowKeyMap.get(rowKeyName);
                 for (IndexBlock indexBlock : indexBlockList) {
+                    //更新行最新的时间戳
+                    if (indexBlock.getTimestamp() > latestTimeStamp) {
+                        latestTimeStamp = indexBlock.getTimestamp();
+                    }
+
                     ByteBuffer sizeByteBuffer = ByteBuffer.allocateDirect(indexBlock.getDataSize());
                     FileChannel fileChannel = FileChannel.open(dpFile.toPath(), READ);
                     if (fileChannel.size() == 0) {
@@ -117,6 +125,7 @@ public class QueryHandler {
             }
             if (queryResultList.size() > 0) {
                 vinMap.put(vin, queryResultList);
+                vinLatestTimestampMap.put(vin, latestTimeStamp);
             }
         }
 
@@ -128,7 +137,6 @@ public class QueryHandler {
             Map<String, ColumnValue> latestQueryColumns = new HashMap<>();
             //存储范围查询的列值信息
             Map<Long, Map<String, ColumnValue>> timeStampValueMap = new HashMap<>();
-            long timestamp = 0;
             for (Map.Entry<String, List<QueryResult>> item : map.entrySet()) {
                 //范围查询
                 if (timeLowerBound != -1 && timeUpperBound != -1) {
@@ -150,14 +158,11 @@ public class QueryHandler {
                     if (first.isPresent()) {
                         QueryResult queryResult = first.get();
                         latestQueryColumns.put(item.getKey(), queryResult.getColumnValue());
-                        if (queryResult.getTimestamp() > timestamp) {
-                            timestamp = queryResult.getTimestamp();
-                        }
                     }
                 }
             }
             if (latestQueryColumns.size() > 0) {
-                Row row = new Row(entity.getKey(), timestamp, latestQueryColumns);
+                Row row = new Row(entity.getKey(), vinLatestTimestampMap.get(entity.getKey()), latestQueryColumns);
                 result.add(row);
             }
             if (timeStampValueMap.size() > 0) {

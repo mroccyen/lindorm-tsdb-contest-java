@@ -100,7 +100,7 @@ public class MyEvaluationSample {
             columns.put("col3", new ColumnValue.StringColumn(buffer));
             str = "12345678912345678";
             rowList = new ArrayList<>();
-            rowList.add(new Row(new Vin(str.getBytes(StandardCharsets.UTF_8)), 1, columns));
+            rowList.add(new Row(new Vin(str.getBytes(StandardCharsets.UTF_8)), 2, columns));
             str = "98765432123456789";
             rowList.add(new Row(new Vin(str.getBytes(StandardCharsets.UTF_8)), 1, columns));
             rowList.add(new Row(new Vin(str.getBytes(StandardCharsets.UTF_8)), 2, columns));

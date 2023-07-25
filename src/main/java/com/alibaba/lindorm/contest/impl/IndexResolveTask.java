@@ -45,6 +45,14 @@ public class IndexResolveTask extends Thread {
         indexBlock.setOffset(offset);
         i = i + 8;
 
+        byte[] timeStampByte = new byte[8];
+        for (int j = i; j < i + 8; j++) {
+            timeStampByte[j - i] = indexByteList[j];
+        }
+        long timeStamp = ByteArrayUtil.byteArray2Long_Big_Endian(timeStampByte);
+        indexBlock.setTimestamp(timeStamp);
+        i = i + 8;
+
         byte[] dataSizeByte = new byte[4];
         for (int j = i; j < i + 4; j++) {
             dataSizeByte[j - i] = indexByteList[j];
