@@ -38,11 +38,11 @@ public class IndexBufferHandler {
     public static void initIndexBuffer(File ipFile, IndexResolveTask indexResolveTask) throws IOException {
         FileChannel fileChannel = FileChannel.open(ipFile.toPath(), READ);
         if (fileChannel.size() == 0) {
-            System.out.println(">>> no need load index data");
+            System.out.println(">>> initIndexBuffer no need load index data");
             return;
         }
-        System.out.println(">>> load exist index data begin");
-        System.out.println(">>> exist index file size: " + fileChannel.size());
+        System.out.println(">>> initIndexBuffer load exist index data begin");
+        System.out.println(">>> initIndexBuffer exist index file size: " + fileChannel.size());
         MappedByteBuffer dataByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
         long start = System.currentTimeMillis();
         while (dataByteBuffer.hasRemaining()) {
@@ -78,8 +78,8 @@ public class IndexBufferHandler {
         }
         wrapper.getLock().unlock();
         long end = System.currentTimeMillis();
-        System.out.println("----- load exist index time: " + (end - start));
-        System.out.println(">>> exist index data size: " + INDEX_MAP.size());
-        System.out.println(">>> load exist index data complete");
+        System.out.println(">>> initIndexBuffer load exist index time: " + (end - start));
+        System.out.println(">>> initIndexBuffer exist index data size: " + INDEX_MAP.size());
+        System.out.println(">>> initIndexBuffer load exist index data complete");
     }
 }

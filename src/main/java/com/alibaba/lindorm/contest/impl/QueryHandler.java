@@ -28,7 +28,7 @@ public class QueryHandler {
         Set<String> requestedColumns = pReadReq.getRequestedColumns();
         ArrayList<Row> result = query(tableName, vinList, requestedColumns, -1, -1);
         long end = System.currentTimeMillis();
-        System.out.println("----- executeLatestQuery time: " + (end - start));
+        System.out.println(">>> executeLatestQuery time: " + (end - start));
         return result;
     }
 
@@ -42,7 +42,7 @@ public class QueryHandler {
         Set<String> requestedColumns = trReadReq.getRequestedFields();
         ArrayList<Row> result = query(tableName, Collections.singletonList(vin), requestedColumns, trReadReq.getTimeLowerBound(), trReadReq.getTimeUpperBound());
         long end = System.currentTimeMillis();
-        System.out.println("----- executeTimeRangeQuery time: " + (end - start));
+        System.out.println(">>> executeTimeRangeQuery time: " + (end - start));
         return result;
     }
 

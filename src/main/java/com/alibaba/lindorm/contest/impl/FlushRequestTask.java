@@ -55,6 +55,8 @@ public class FlushRequestTask extends Thread {
         try {
             dataWriteFileChanel.force(false);
             indexWriteFileChanel.force(false);
+            System.out.println(">>> shutdown exist data file size: " + dataWriteFileChanel.size());
+            System.out.println(">>> shutdown exist index file size: " + indexWriteFileChanel.size());
         } catch (Exception e) {
             System.out.println(e.getMessage());
             System.exit(-1);
