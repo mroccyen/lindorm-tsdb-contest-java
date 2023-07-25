@@ -49,7 +49,16 @@ public class FlushRequestTask extends Thread {
     }
 
     public void shutdown() {
+        while (flushRequestQueue.size() > 0) {
+        }
         stop = true;
+        try {
+            dataWriteFileChanel.force(false);
+            indexWriteFileChanel.force(false);
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+            System.exit(-1);
+        }
     }
 
     @Override

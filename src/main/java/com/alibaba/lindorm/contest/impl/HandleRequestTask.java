@@ -57,6 +57,8 @@ public class HandleRequestTask extends Thread {
     }
 
     public void shutdown() {
+        while (writeRequestQueue.size() > 0) {
+        }
         flushRequestTask.shutdown();
         stop = true;
     }
