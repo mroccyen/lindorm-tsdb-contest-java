@@ -115,7 +115,9 @@ public class QueryHandler {
                     fileChannel.close();
                 }
             }
-            vinMap.put(vin, queryResultList);
+            if (queryResultList.size() > 0) {
+                vinMap.put(vin, queryResultList);
+            }
         }
 
         ArrayList<Row> result = new ArrayList<>();
