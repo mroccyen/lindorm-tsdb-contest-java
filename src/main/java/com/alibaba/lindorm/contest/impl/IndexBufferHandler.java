@@ -5,9 +5,10 @@ import java.io.IOException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static java.nio.file.StandardOpenOption.READ;
 
@@ -19,7 +20,7 @@ public class IndexBufferHandler {
             List<IndexBlock> list = INDEX_MAP.get(tableName);
             list.addAll(indexBlockList);
         } else {
-            INDEX_MAP.put(tableName, new ArrayList<>(indexBlockList));
+            INDEX_MAP.put(tableName, new CopyOnWriteArrayList<>(indexBlockList));
         }
     }
 
@@ -35,7 +36,7 @@ public class IndexBufferHandler {
         INDEX_MAP.clear();
     }
 
-    public static void initIndexBuffer(File ipFile) throws IOException {
+    public static void initIndexBuffer(File ipFile, BlockingQueue<byte[]> writeRequestQueue) throws IOException {
         FileChannel fileChannel = FileChannel.open(ipFile.toPath(), READ);
         if (fileChannel.size() == 0) {
             System.out.println(">>> no need load index data");
@@ -46,40 +47,13 @@ public class IndexBufferHandler {
         MappedByteBuffer dataByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
         long start = System.currentTimeMillis();
         while (dataByteBuffer.hasRemaining()) {
-            IndexBlock indexBlock = new IndexBlock();
             //读取索引长度
-            byte[] indexDataLengthByte = new byte[4];
-            dataByteBuffer.get(indexDataLengthByte);
+            int indexDataLength = dataByteBuffer.getInt();
 
-            byte[] offsetByte = new byte[8];
-            dataByteBuffer.get(offsetByte);
-            long offset = ByteArrayUtil.byteArray2Long_Big_Endian(offsetByte);
-            indexBlock.setOffset(offset);
+            byte[] indexDataByte = new byte[indexDataLength];
+            dataByteBuffer.get(indexDataByte);
 
-            byte[] dataSizeByte = new byte[4];
-            dataByteBuffer.get(dataSizeByte);
-            int dataSize = ByteArrayUtil.byteArray2Int_Big_Endian(dataSizeByte);
-            indexBlock.setDataSize(dataSize);
-
-            byte[] tableNameLengthByte = new byte[4];
-            dataByteBuffer.get(tableNameLengthByte);
-            int tableNameLength = ByteArrayUtil.byteArray2Int_Big_Endian(tableNameLengthByte);
-            indexBlock.setTableNameLength(tableNameLength);
-
-            byte[] tableName = new byte[tableNameLength];
-            dataByteBuffer.get(tableName);
-            indexBlock.setTableName(tableName);
-
-            byte[] rowKeyLengthByte = new byte[4];
-            dataByteBuffer.get(rowKeyLengthByte);
-            int rowKeyLength = ByteArrayUtil.byteArray2Int_Big_Endian(rowKeyLengthByte);
-            indexBlock.setRowKeyLength(rowKeyLength);
-
-            byte[] rowKey = new byte[rowKeyLength];
-            dataByteBuffer.get(rowKey);
-            indexBlock.setRowKey(rowKey);
-
-            offerIndex(new String(tableName), Collections.singletonList(indexBlock));
+            writeRequestQueue.offer(indexDataByte);
         }
         fileChannel.close();
         long end = System.currentTimeMillis();

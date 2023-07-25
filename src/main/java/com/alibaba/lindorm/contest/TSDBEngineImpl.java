@@ -25,6 +25,8 @@ public class TSDBEngineImpl extends TSDBEngine {
 
     private HandleRequestTask writeTask;
 
+    private IndexResolveTask indexResolveTask;
+
     private final HashMap<String, Schema> tableSchema = new HashMap<>();
 
     private QueryHandler queryHandler;
@@ -51,8 +53,10 @@ public class TSDBEngineImpl extends TSDBEngine {
         if (!ipFile.exists()) {
             ipFile.createNewFile();
         }
+        indexResolveTask = new IndexResolveTask();
+        indexResolveTask.start();
         //加载索引信息
-        IndexBufferHandler.initIndexBuffer(ipFile);
+        IndexBufferHandler.initIndexBuffer(ipFile, indexResolveTask.getWriteRequestQueue());
         //开启写入任务
         writeTask = new HandleRequestTask(dpFile, ipFile);
         writeTask.start();
@@ -69,6 +73,7 @@ public class TSDBEngineImpl extends TSDBEngine {
     @Override
     public void shutdown() {
         writeTask.shutdown();
+        indexResolveTask.shutdown();
         IndexBufferHandler.shutdown();
     }
 
