@@ -6,25 +6,40 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 public class IndexResolveTask extends Thread {
-    private final BlockingQueue<byte[]> writeRequestQueue = new ArrayBlockingQueue<>(50);
+    private final BlockingQueue<IndexLoadCompleteNotice> writeRequestQueue = new ArrayBlockingQueue<>(50);
 
     private boolean stop = false;
+
+    private IndexLoadCompleteWrapper indexLoadCompleteWrapper;
 
     public void shutdown() {
         stop = true;
     }
 
-    public BlockingQueue<byte[]> getWriteRequestQueue() {
+    public BlockingQueue<IndexLoadCompleteNotice> getWriteRequestQueue() {
         return writeRequestQueue;
+    }
+
+    public void waitComplete(IndexLoadCompleteWrapper wrapper) {
+        indexLoadCompleteWrapper = wrapper;
     }
 
     @Override
     public void run() {
         try {
             while (!stop) {
-                byte[] poll = writeRequestQueue.poll(5, TimeUnit.MILLISECONDS);
-                if (poll != null && poll.length > 0) {
-                    resolve(poll);
+                IndexLoadCompleteNotice notice = writeRequestQueue.poll(5, TimeUnit.MILLISECONDS);
+                if (notice != null) {
+                    if (notice.isComplete()) {
+                        indexLoadCompleteWrapper.getLock().lock();
+                        indexLoadCompleteWrapper.getCondition().signal();
+                        indexLoadCompleteWrapper.getLock().unlock();
+                    } else {
+                        byte[] poll = notice.getIndexDataByte();
+                        if (poll != null && poll.length > 0) {
+                            resolve(poll);
+                        }
+                    }
                 }
             }
         } catch (Exception e) {

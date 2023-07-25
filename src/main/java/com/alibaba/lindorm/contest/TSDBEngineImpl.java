@@ -56,7 +56,7 @@ public class TSDBEngineImpl extends TSDBEngine {
         indexResolveTask = new IndexResolveTask();
         indexResolveTask.start();
         //加载索引信息
-        IndexBufferHandler.initIndexBuffer(ipFile, indexResolveTask.getWriteRequestQueue());
+        IndexBufferHandler.initIndexBuffer(ipFile, indexResolveTask);
         //开启写入任务
         writeTask = new HandleRequestTask(dpFile, ipFile);
         writeTask.start();

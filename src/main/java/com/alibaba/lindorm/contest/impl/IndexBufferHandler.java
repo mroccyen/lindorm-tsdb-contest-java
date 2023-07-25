@@ -6,7 +6,6 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -36,7 +35,7 @@ public class IndexBufferHandler {
         INDEX_MAP.clear();
     }
 
-    public static void initIndexBuffer(File ipFile, BlockingQueue<byte[]> writeRequestQueue) throws IOException {
+    public static void initIndexBuffer(File ipFile, IndexResolveTask indexResolveTask) throws IOException {
         FileChannel fileChannel = FileChannel.open(ipFile.toPath(), READ);
         if (fileChannel.size() == 0) {
             System.out.println(">>> no need load index data");
@@ -53,9 +52,30 @@ public class IndexBufferHandler {
             byte[] indexDataByte = new byte[indexDataLength];
             dataByteBuffer.get(indexDataByte);
 
-            writeRequestQueue.offer(indexDataByte);
+            IndexLoadCompleteNotice notice = new IndexLoadCompleteNotice();
+            notice.setComplete(false);
+            notice.setIndexDataByte(indexDataByte);
+            indexResolveTask.getWriteRequestQueue().offer(notice);
         }
+        //关系通道
         fileChannel.close();
+
+        IndexLoadCompleteWrapper wrapper = new IndexLoadCompleteWrapper();
+        wrapper.getLock().lock();
+        //通知等待完成
+        indexResolveTask.waitComplete(wrapper);
+        //结束进行通知
+        IndexLoadCompleteNotice notice = new IndexLoadCompleteNotice();
+        notice.setComplete(true);
+        notice.setIndexDataByte(null);
+        indexResolveTask.getWriteRequestQueue().offer(notice);
+        try {
+            //等待索引数据加载完成
+            wrapper.getCondition().await();
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+            System.exit(-1);
+        }
         long end = System.currentTimeMillis();
         System.out.println("----- load exist index time: " + (end - start));
         System.out.println(">>> exist index data size: " + INDEX_MAP.size());
