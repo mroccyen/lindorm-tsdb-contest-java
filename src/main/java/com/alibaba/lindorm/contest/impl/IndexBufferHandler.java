@@ -76,6 +76,7 @@ public class IndexBufferHandler {
             System.out.println(e.getMessage());
             System.exit(-1);
         }
+        wrapper.getLock().unlock();
         long end = System.currentTimeMillis();
         System.out.println("----- load exist index time: " + (end - start));
         System.out.println(">>> exist index data size: " + INDEX_MAP.size());

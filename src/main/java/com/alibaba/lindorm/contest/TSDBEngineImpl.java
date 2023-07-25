@@ -62,12 +62,14 @@ public class TSDBEngineImpl extends TSDBEngine {
         writeTask.start();
         //初始化数据查询处理器
         queryHandler = new QueryHandler(dpFile);
+        System.out.println(">>> connect complete");
     }
 
     @Override
     public void createTable(String tableName, Schema schema) throws IOException {
         //缓存表元数据信息
         tableSchema.put(tableName, schema);
+        System.out.println(">>> createTable complete");
     }
 
     @Override
@@ -75,6 +77,7 @@ public class TSDBEngineImpl extends TSDBEngine {
         writeTask.shutdown();
         indexResolveTask.shutdown();
         IndexBufferHandler.shutdown();
+        System.out.println(">>> shutdown complete");
     }
 
     @Override
