@@ -1,5 +1,7 @@
 package com.alibaba.lindorm.contest.impl;
 
+import com.alibaba.lindorm.contest.impl.bpluse.BTree;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.MappedByteBuffer;
@@ -11,21 +13,31 @@ import java.util.concurrent.ConcurrentHashMap;
 import static java.nio.file.StandardOpenOption.READ;
 
 public class IndexBufferHandler {
-    private static final ConcurrentHashMap<String, List<IndexBlock>> INDEX_MAP = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, ConcurrentHashMap<String, BTree<Long>>> INDEX_CACHE_MAP = new ConcurrentHashMap<>();
 
     public static void offerIndex(String tableName, IndexBlock indexBlock) {
-        if (INDEX_MAP.containsKey(tableName)) {
-            List<IndexBlock> list = INDEX_MAP.get(tableName);
-            list.add(indexBlock);
+        String rowKey = new String(indexBlock.getRowKey());
+        if (INDEX_CACHE_MAP.containsKey(tableName)) {
+            ConcurrentHashMap<String, BTree<Long>> map = INDEX_CACHE_MAP.get(tableName);
+            if (map.containsKey(rowKey)) {
+                BTree<Long> tree = map.get(rowKey);
+                tree.insert(indexBlock.getTimestamp(), indexBlock);
+            } else {
+                BTree<Long> tree = new BTree<>(30);
+                tree.insert(indexBlock.getTimestamp(), indexBlock);
+                map.put(rowKey, tree);
+            }
         } else {
-            ArrayList<IndexBlock> l = new ArrayList<>();
-            l.add(indexBlock);
-            INDEX_MAP.put(tableName, l);
+            ConcurrentHashMap<String, BTree<Long>> map = new ConcurrentHashMap<>();
+            BTree<Long> tree = new BTree<>(30);
+            tree.insert(indexBlock.getTimestamp(), indexBlock);
+            map.put(rowKey, tree);
+            INDEX_CACHE_MAP.put(tableName, map);
         }
     }
 
     public static List<IndexBlock> getIndexBlocks(String tableName) {
-        List<IndexBlock> indexBlockList = INDEX_MAP.get(tableName);
+        List<IndexBlock> indexBlockList = null;
         if (indexBlockList == null) {
             return new ArrayList<>();
         }
@@ -33,7 +45,7 @@ public class IndexBufferHandler {
     }
 
     public static void shutdown() {
-        INDEX_MAP.clear();
+        INDEX_CACHE_MAP.clear();
     }
 
     public static void initIndexBuffer(File ipFile, IndexResolveTask indexResolveTask) throws IOException {
@@ -88,7 +100,6 @@ public class IndexBufferHandler {
         wrapper.getLock().unlock();
         long end = System.currentTimeMillis();
         System.out.println(">>> initIndexBuffer load exist index time: " + (end - start));
-        System.out.println(">>> initIndexBuffer exist index data size: " + INDEX_MAP.size());
         System.out.println(">>> initIndexBuffer load exist index data complete");
     }
 }
