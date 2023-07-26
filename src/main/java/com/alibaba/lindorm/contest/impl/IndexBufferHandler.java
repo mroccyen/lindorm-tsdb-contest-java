@@ -46,6 +46,7 @@ public class IndexBufferHandler {
         System.out.println(">>> initIndexBuffer exist index file size: " + fileChannel.size());
         MappedByteBuffer dataByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
         long start = System.currentTimeMillis();
+        long size = 0;
         while (dataByteBuffer.hasRemaining()) {
             //读取索引长度
             int indexDataLength = dataByteBuffer.getInt();
@@ -56,8 +57,15 @@ public class IndexBufferHandler {
             IndexLoadCompleteNotice notice = new IndexLoadCompleteNotice();
             notice.setComplete(false);
             notice.setIndexDataByte(indexDataByte);
-            indexResolveTask.getWriteRequestQueue().offer(notice);
+            try {
+                indexResolveTask.getWriteRequestQueue().put(notice);
+            } catch (InterruptedException e) {
+                System.out.println(e.getMessage());
+                System.exit(-1);
+            }
+            size++;
         }
+        System.out.println(">>> initIndexBuffer offered index data size: " + size);
         //关系通道
         fileChannel.close();
 
