@@ -10,7 +10,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -84,7 +83,6 @@ public class FlushRequestTask extends Thread {
         Iterator<WriteRequestWrapper> iterator = writeRequestWrapperList.iterator();
         while (iterator.hasNext()) {
             WriteRequestWrapper writeRequestWrapper = iterator.next();
-            List<IndexBlock> indexBlockList = new ArrayList<>();
 
             WriteRequest writeRequest = writeRequestWrapper.getWriteRequest();
             String tableName = writeRequest.getTableName();
@@ -124,10 +122,7 @@ public class FlushRequestTask extends Thread {
                 indexBlock.setTableName(tableNameBytes);
                 indexBlock.setRowKeyLength(Vin.VIN_LENGTH);
                 indexBlock.setRowKey(vin.getVin());
-                indexBlockList.add(indexBlock);
-            }
-            //保存索引信息
-            for (IndexBlock indexBlock : indexBlockList) {
+
                 indexWriteByteBuffer.putInt(indexBlock.getIndexBlockLength());
                 indexWriteByteBuffer.putLong(indexBlock.getOffset());
                 indexWriteByteBuffer.putLong(indexBlock.getTimestamp());
