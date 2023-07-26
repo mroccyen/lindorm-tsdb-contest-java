@@ -10,13 +10,13 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 
 import static java.nio.file.StandardOpenOption.APPEND;
@@ -84,7 +84,7 @@ public class FlushRequestTask extends Thread {
         Iterator<WriteRequestWrapper> iterator = writeRequestWrapperList.iterator();
         while (iterator.hasNext()) {
             WriteRequestWrapper writeRequestWrapper = iterator.next();
-            List<IndexBlock> indexBlockList = new CopyOnWriteArrayList<>();
+            List<IndexBlock> indexBlockList = new ArrayList<>();
 
             WriteRequest writeRequest = writeRequestWrapper.getWriteRequest();
             String tableName = writeRequest.getTableName();
@@ -136,8 +136,9 @@ public class FlushRequestTask extends Thread {
                 indexWriteByteBuffer.put(indexBlock.getTableName());
                 indexWriteByteBuffer.putInt(indexBlock.getRowKeyLength());
                 indexWriteByteBuffer.put(indexBlock.getRowKey());
+
+                IndexBufferHandler.offerIndex(tableName, indexBlock);
             }
-            IndexBufferHandler.offerIndex(tableName, indexBlockList);
         }
         dataWriteByteBuffer.flip();
         dataWriteFileChanel.write(dataWriteByteBuffer);

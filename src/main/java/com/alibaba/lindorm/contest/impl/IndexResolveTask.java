@@ -1,6 +1,5 @@
 package com.alibaba.lindorm.contest.impl;
 
-import java.util.Collections;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -105,6 +104,6 @@ public class IndexResolveTask extends Thread {
         }
         indexBlock.setRowKey(rowKey);
 
-        IndexBufferHandler.offerIndex(new String(tableName), Collections.singletonList(indexBlock));
+        IndexBufferHandler.offerIndex(new String(tableName), indexBlock);
     }
 }

@@ -7,19 +7,20 @@ import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 import static java.nio.file.StandardOpenOption.READ;
 
 public class IndexBufferHandler {
     private static final ConcurrentHashMap<String, List<IndexBlock>> INDEX_MAP = new ConcurrentHashMap<>();
 
-    public static void offerIndex(String tableName, List<IndexBlock> indexBlockList) {
+    public static void offerIndex(String tableName, IndexBlock indexBlock) {
         if (INDEX_MAP.containsKey(tableName)) {
             List<IndexBlock> list = INDEX_MAP.get(tableName);
-            list.addAll(indexBlockList);
+            list.add(indexBlock);
         } else {
-            INDEX_MAP.put(tableName, new CopyOnWriteArrayList<>(indexBlockList));
+            ArrayList<IndexBlock> l = new ArrayList<>();
+            l.add(indexBlock);
+            INDEX_MAP.put(tableName, l);
         }
     }
 
