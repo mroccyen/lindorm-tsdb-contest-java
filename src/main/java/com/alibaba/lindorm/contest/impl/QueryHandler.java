@@ -21,28 +21,28 @@ public class QueryHandler {
     public ArrayList<Row> executeLatestQuery(LatestQueryRequest pReadReq) throws IOException {
         List<IndexBlock> indexBlocks = IndexBufferHandler.getIndexBlocks(pReadReq.getTableName());
         int size = indexBlocks.size();
-        System.out.println(">>> executeLatestQuery " + pReadReq.getTableName() + " exist index data size: " + size);
+        //System.out.println(">>> executeLatestQuery " + pReadReq.getTableName() + " exist index data size: " + size);
         long start = System.currentTimeMillis();
         String tableName = pReadReq.getTableName();
         Collection<Vin> vinList = pReadReq.getVins();
         Set<String> requestedColumns = pReadReq.getRequestedColumns();
         ArrayList<Row> result = query(tableName, vinList, requestedColumns, -1, -1);
         long end = System.currentTimeMillis();
-        System.out.println(">>> executeLatestQuery time: " + (end - start));
+        //System.out.println(">>> executeLatestQuery time: " + (end - start));
         return result;
     }
 
     public ArrayList<Row> executeTimeRangeQuery(TimeRangeQueryRequest trReadReq) throws IOException {
         List<IndexBlock> indexBlocks = IndexBufferHandler.getIndexBlocks(trReadReq.getTableName());
         int size = indexBlocks.size();
-        System.out.println(">>> executeTimeRangeQuery " + trReadReq.getTableName() + " exist index data size: " + size);
+        //System.out.println(">>> executeTimeRangeQuery " + trReadReq.getTableName() + " exist index data size: " + size);
         long start = System.currentTimeMillis();
         String tableName = trReadReq.getTableName();
         Vin vin = trReadReq.getVin();
         Set<String> requestedColumns = trReadReq.getRequestedFields();
         ArrayList<Row> result = query(tableName, Collections.singletonList(vin), requestedColumns, trReadReq.getTimeLowerBound(), trReadReq.getTimeUpperBound());
         long end = System.currentTimeMillis();
-        System.out.println(">>> executeTimeRangeQuery time: " + (end - start));
+        //System.out.println(">>> executeTimeRangeQuery time: " + (end - start));
         return result;
     }
 
