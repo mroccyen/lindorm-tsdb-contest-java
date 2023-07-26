@@ -49,11 +49,35 @@ public class QueryHandler {
     private ArrayList<Row> query(String tableName, Collection<Vin> vinList, Set<String> requestedColumns, long timeLowerBound, long timeUpperBound) throws IOException {
         //获取当前表所有的索引信息
         List<IndexBlock> indexBlocks = IndexBufferHandler.getIndexBlocks(tableName);
-        Map<String, Vin> vinNameMap = vinList.stream().collect(Collectors.toMap(i -> new String(i.getVin()), i -> i));
-        List<Row> rowList = new ArrayList<>();
+
+        //先过滤数据
+        List<IndexBlock> queryLatestList = new ArrayList<>();
+        Map<String, IndexBlock> queryRangeMap = new HashMap<>();
         Iterator<IndexBlock> iterator = indexBlocks.iterator();
         while (iterator.hasNext()) {
             IndexBlock indexBlock = iterator.next();
+            //范围查询
+            if (timeLowerBound != -1 && timeUpperBound != -1) {
+                if (indexBlock.getTimestamp() >= timeLowerBound && indexBlock.getTimestamp() < timeUpperBound) {
+                    queryLatestList.add(indexBlock);
+                }
+            } else {
+                String rowKey = new String(indexBlock.getRowKey());
+                if (!queryRangeMap.containsKey(rowKey) || queryRangeMap.get(rowKey).getTimestamp() < indexBlock.getTimestamp()) {
+                    queryRangeMap.put(rowKey, indexBlock);
+                }
+            }
+        }
+        List<IndexBlock> r;
+        if (queryRangeMap.size() > 0) {
+            r = new ArrayList<>(queryRangeMap.values());
+        } else {
+            r = queryLatestList;
+        }
+
+        Map<String, Vin> vinNameMap = vinList.stream().collect(Collectors.toMap(i -> new String(i.getVin()), i -> i));
+        ArrayList<Row> rowList = new ArrayList<>();
+        for (IndexBlock indexBlock : r) {
             String rowKeyName = new String(indexBlock.getRowKey());
             Map<String, ColumnValue> columns = new HashMap<>();
             if (vinNameMap.containsKey(rowKeyName)) {
@@ -116,24 +140,6 @@ public class QueryHandler {
                 rowList.add(row);
             }
         }
-
-        ArrayList<Row> result = new ArrayList<>();
-        Map<Vin, Row> resultMap = new HashMap<>();
-        for (Row row : rowList) {
-            //范围查询
-            if (timeLowerBound != -1 && timeUpperBound != -1) {
-                if (row.getTimestamp() >= timeLowerBound && row.getTimestamp() < timeUpperBound) {
-                    result.add(row);
-                }
-            } else {
-                if (!resultMap.containsKey(row.getVin()) || resultMap.get(row.getVin()).getTimestamp() < row.getTimestamp()) {
-                    resultMap.put(row.getVin(), row);
-                }
-            }
-        }
-        if (resultMap.size() > 0) {
-            return new ArrayList<>(resultMap.values());
-        }
-        return result;
+        return rowList;
     }
 }
