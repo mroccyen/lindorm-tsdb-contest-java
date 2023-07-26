@@ -11,6 +11,8 @@ public class IndexResolveTask extends Thread {
 
     private IndexLoadCompleteWrapper indexLoadCompleteWrapper;
 
+    private long size;
+
     public void shutdown() {
         stop = true;
     }
@@ -33,7 +35,9 @@ public class IndexResolveTask extends Thread {
                         indexLoadCompleteWrapper.getLock().lock();
                         indexLoadCompleteWrapper.getCondition().signal();
                         indexLoadCompleteWrapper.getLock().unlock();
+                        System.out.println(">>> IndexResolveTask load index data size: " + size);
                     } else {
+                        size++;
                         byte[] poll = notice.getIndexDataByte();
                         if (poll != null && poll.length > 0) {
                             resolve(poll);
