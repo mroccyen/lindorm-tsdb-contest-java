@@ -51,7 +51,9 @@ public class QueryHandler {
         List<IndexBlock> indexBlocks = IndexBufferHandler.getIndexBlocks(tableName);
         Map<String, Vin> vinNameMap = vinList.stream().collect(Collectors.toMap(i -> new String(i.getVin()), i -> i));
         List<Row> rowList = new ArrayList<>();
-        for (IndexBlock indexBlock : indexBlocks) {
+        Iterator<IndexBlock> iterator = indexBlocks.iterator();
+        while (iterator.hasNext()) {
+            IndexBlock indexBlock = iterator.next();
             String rowKeyName = new String(indexBlock.getRowKey());
             Map<String, ColumnValue> columns = new HashMap<>();
             if (vinNameMap.containsKey(rowKeyName)) {
