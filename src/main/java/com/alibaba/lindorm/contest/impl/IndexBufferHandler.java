@@ -6,8 +6,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static java.nio.file.StandardOpenOption.READ;
@@ -36,12 +34,12 @@ public class IndexBufferHandler {
         }
     }
 
-    public static List<IndexBlock> getIndexBlocks(String tableName) {
-        List<IndexBlock> indexBlockList = null;
-        if (indexBlockList == null) {
-            return new ArrayList<>();
+    public static ConcurrentHashMap<String, BTree<Long>> getIndexBlockMap(String tableName) {
+        ConcurrentHashMap<String, BTree<Long>> map = INDEX_CACHE_MAP.get(tableName);
+        if (map == null) {
+            return new ConcurrentHashMap<>();
         }
-        return indexBlockList;
+        return map;
     }
 
     public static void shutdown() {

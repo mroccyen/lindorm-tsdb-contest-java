@@ -1,5 +1,7 @@
 package com.alibaba.lindorm.contest.impl;
 
+import com.alibaba.lindorm.contest.impl.bpluse.BTree;
+import com.alibaba.lindorm.contest.impl.bpluse.Result;
 import com.alibaba.lindorm.contest.structs.*;
 
 import java.io.File;
@@ -7,6 +9,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import static java.nio.file.StandardOpenOption.READ;
@@ -48,11 +51,25 @@ public class QueryHandler {
 
     private ArrayList<Row> query(String tableName, Collection<Vin> vinList, Set<String> requestedColumns, long timeLowerBound, long timeUpperBound) throws IOException {
         //获取当前表所有的索引信息
-        List<IndexBlock> indexBlocks = IndexBufferHandler.getIndexBlocks(tableName);
+        ConcurrentHashMap<String, BTree<Long>> indexBlockMap = IndexBufferHandler.getIndexBlockMap(tableName);
 
         //先过滤数据
         List<IndexBlock> queryLatestList = new ArrayList<>();
         Map<String, IndexBlock> queryRangeMap = new HashMap<>();
+        for (Vin vin : vinList) {
+            String rowKey = new String(vin.getVin());
+            BTree<Long> tree = indexBlockMap.get(rowKey);
+            if (tree != null) {
+                //范围查询
+                if (timeLowerBound != -1 && timeUpperBound != -1) {
+                    if (indexBlock.getTimestamp() >= timeLowerBound && indexBlock.getTimestamp() < timeUpperBound) {
+                        queryLatestList.add(indexBlock);
+                    }
+                } else {
+                    queryRangeMap.put(rowKey, tree.searchKey());
+                }
+            }
+        }
         Iterator<IndexBlock> iterator = indexBlocks.iterator();
         while (iterator.hasNext()) {
             IndexBlock indexBlock = iterator.next();
