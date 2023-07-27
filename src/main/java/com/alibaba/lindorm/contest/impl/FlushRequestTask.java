@@ -14,15 +14,11 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import static java.nio.file.StandardOpenOption.APPEND;
 
 public class FlushRequestTask extends Thread {
-    private final BlockingQueue<List<WriteRequestWrapper>> flushRequestQueue = new ArrayBlockingQueue<>(100);
-
     private final FileChannel dataWriteFileChanel;
 
     private final ByteBuffer dataWriteByteBuffer;
@@ -33,7 +29,9 @@ public class FlushRequestTask extends Thread {
 
     private boolean stop = false;
 
-    public FlushRequestTask(File dpFile, File ipFile) throws IOException {
+    private final HandleRequestTask handleRequestTask;
+
+    public FlushRequestTask(HandleRequestTask handleRequestTask, File dpFile, File ipFile) throws IOException {
         dataWriteFileChanel = FileChannel.open(dpFile.toPath(), APPEND);
         //100M
         dataWriteByteBuffer = ByteBuffer.allocateDirect(1024 * 1024 * 100);
@@ -41,15 +39,11 @@ public class FlushRequestTask extends Thread {
         indexWriteFileChanel = FileChannel.open(ipFile.toPath(), APPEND);
         //100M
         indexWriteByteBuffer = ByteBuffer.allocateDirect(1024 * 1024 * 100);
-    }
 
-    public BlockingQueue<List<WriteRequestWrapper>> getFlushRequestQueue() {
-        return flushRequestQueue;
+        this.handleRequestTask = handleRequestTask;
     }
 
     public void shutdown() {
-        while (flushRequestQueue.size() > 0) {
-        }
         stop = true;
         try {
             dataWriteFileChanel.force(false);
@@ -66,7 +60,7 @@ public class FlushRequestTask extends Thread {
     public void run() {
         try {
             while (!stop) {
-                List<WriteRequestWrapper> writeRequestWrapperList = flushRequestQueue.poll(5, TimeUnit.MILLISECONDS);
+                List<WriteRequestWrapper> writeRequestWrapperList = handleRequestTask.getFlushRequestQueue().poll(5, TimeUnit.MILLISECONDS);
                 if (writeRequestWrapperList != null && writeRequestWrapperList.size() > 0) {
                     //执行刷盘操作
                     doWrite(writeRequestWrapperList);
@@ -152,11 +146,6 @@ public class FlushRequestTask extends Thread {
 
         dataWriteByteBuffer.clear();
         indexWriteByteBuffer.clear();
-    }
-
-    private ColumnValue.ColumnType getColumnType(String columnName, Schema schema) {
-        Map<String, ColumnValue.ColumnType> columnTypeMap = schema.getColumnTypeMap();
-        return columnTypeMap.get(columnName);
     }
 
     private KeyValue resolveKey(String columnNameStr, ColumnValue columnValue, long timestamp, Vin vin, Schema schema) {
