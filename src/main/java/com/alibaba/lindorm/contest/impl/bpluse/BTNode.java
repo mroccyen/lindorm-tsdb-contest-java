@@ -26,12 +26,12 @@ public class BTNode {
         return String.format("Node_%s: %d%s", hashCode(), size, Arrays.toString(keys));
     }
 
-    Object getMaxKey() {
+    public Object getMaxKey() {
         return keys[size - 1];
     }
 
-    void setMaxKey(Object key) {
-        keys[size - 1] = key;
+    public Object getMaxPtr() {
+        return ptrs[size - 1];
     }
 
     public Object[] getKeys() {

@@ -36,7 +36,7 @@ public class BTree<K extends Comparable<K>> {
             return r;
         } else {
             boolean hasFind = false;
-            for (int i = result.index; i < result.pt.keys.length; i++) {
+            for (int i = result.index; i < result.pt.getSize(); i++) {
                 K k = (K) result.pt.keys[i];
                 if (k.compareTo(keyBegin) >= 0 && k.compareTo(keyEnd) < 0) {
                     r.add(result.pt.getPtrs()[i]);
@@ -48,7 +48,7 @@ public class BTree<K extends Comparable<K>> {
             if (!hasFind) {
                 BTNode next = result.getPt().next;
                 while (!hasFind) {
-                    for (int i = 0; i < next.getKeys().length; i++) {
+                    for (int i = 0; i < next.getSize(); i++) {
                         K key = (K) next.getKeys()[i];
                         if (key.compareTo(keyBegin) >= 0 && key.compareTo(keyEnd) < 0) {
                             r.add(result.pt.getPtrs()[i]);
@@ -72,7 +72,7 @@ public class BTree<K extends Comparable<K>> {
      */
     public Object searchMax(K key) {
         Result result = searchKeyInternal(key);
-        return result.getPt().getMaxKey();
+        return result.getPt().getMaxPtr();
     }
 
     /**

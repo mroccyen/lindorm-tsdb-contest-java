@@ -1,7 +1,6 @@
 package com.alibaba.lindorm.contest.impl;
 
 import com.alibaba.lindorm.contest.impl.bpluse.BTree;
-import com.alibaba.lindorm.contest.impl.bpluse.Result;
 import com.alibaba.lindorm.contest.structs.*;
 
 import java.io.File;
@@ -62,29 +61,12 @@ public class QueryHandler {
             if (tree != null) {
                 //范围查询
                 if (timeLowerBound != -1 && timeUpperBound != -1) {
-//                    Result result = tree.searchKey(timeLowerBound);
-//                    Object key = result.getPt().getKeys()[result.getIndex()];
-//                    queryRangeMap.put(rowKey, );
-//                    if (indexBlock.getTimestamp() >= timeLowerBound && indexBlock.getTimestamp() < timeUpperBound) {
-//                        queryLatestList.add(indexBlock);
-//                    }
+                    List<Object> list = tree.searchRange(timeLowerBound, timeUpperBound);
+                    for (Object o : list) {
+                        queryLatestList.add((IndexBlock) o);
+                    }
                 } else {
-                   // queryRangeMap.put(rowKey, tree.searchKey());
-                }
-            }
-        }
-        Iterator<IndexBlock> iterator = null;
-        while (iterator.hasNext()) {
-            IndexBlock indexBlock = iterator.next();
-            //范围查询
-            if (timeLowerBound != -1 && timeUpperBound != -1) {
-                if (indexBlock.getTimestamp() >= timeLowerBound && indexBlock.getTimestamp() < timeUpperBound) {
-                    queryLatestList.add(indexBlock);
-                }
-            } else {
-                String rowKey = new String(indexBlock.getRowKey());
-                if (!queryRangeMap.containsKey(rowKey) || queryRangeMap.get(rowKey).getTimestamp() < indexBlock.getTimestamp()) {
-                    queryRangeMap.put(rowKey, indexBlock);
+                    queryRangeMap.put(rowKey, (IndexBlock) tree.searchMax(Long.MAX_VALUE));
                 }
             }
         }
