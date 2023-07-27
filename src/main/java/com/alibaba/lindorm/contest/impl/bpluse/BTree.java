@@ -1,5 +1,8 @@
 package com.alibaba.lindorm.contest.impl.bpluse;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @SuppressWarnings("unchecked")
 public class BTree<K extends Comparable<K>> {
     // m阶B树
@@ -14,6 +17,62 @@ public class BTree<K extends Comparable<K>> {
         this.m = m;
         root = new BTNode(m);
         sqt = root;
+    }
+
+    /**
+     * 范围查询
+     *
+     * @param keyBegin 范围开始
+     * @param keyEnd   范围结束
+     * @return 结果
+     */
+    public List<Object> searchRange(K keyBegin, K keyEnd) {
+        List<Object> r = new ArrayList<>();
+        Result result = searchKeyInternal(keyBegin);
+        if (!result.isTag() && keyBegin.compareTo(keyEnd) == 0) {
+            return new ArrayList<>();
+        } else if (result.isTag() && keyBegin.compareTo(keyEnd) == 0) {
+            r.add(result.pt.getPtrs()[result.getIndex()]);
+            return r;
+        } else {
+            boolean hasFind = false;
+            for (int i = result.index; i < result.pt.keys.length; i++) {
+                K k = (K) result.pt.keys[i];
+                if (k.compareTo(keyBegin) >= 0 && k.compareTo(keyEnd) < 0) {
+                    r.add(result.pt.getPtrs()[i]);
+                } else {
+                    hasFind = true;
+                    break;
+                }
+            }
+            if (!hasFind) {
+                BTNode next = result.getPt().next;
+                while (!hasFind) {
+                    for (int i = 0; i < next.getKeys().length; i++) {
+                        K key = (K) next.getKeys()[i];
+                        if (key.compareTo(keyBegin) >= 0 && key.compareTo(keyEnd) < 0) {
+                            r.add(result.pt.getPtrs()[i]);
+                        } else {
+                            hasFind = true;
+                            break;
+                        }
+                    }
+                    next = next.next;
+                }
+            }
+        }
+        return r;
+    }
+
+    /**
+     * 查询最大key
+     *
+     * @param key key
+     * @return 结果
+     */
+    public Object searchMax(K key) {
+        Result result = searchKeyInternal(key);
+        return result.getPt().getMaxKey();
     }
 
     /**
@@ -62,6 +121,7 @@ public class BTree<K extends Comparable<K>> {
         MergeFlag flag = new MergeFlag();
         return deleteAndAdjust(null, -1, root, key, flag);
     }
+
     /*---------------------------------------------------------⬇️私有方法⬇️-----------------------------------------------*/
 
     /**
@@ -90,7 +150,8 @@ public class BTree<K extends Comparable<K>> {
         if (!T.isleaf) {
             boolean insertFlag = insertAndAdjust(T, i, (BTNode) T.ptrs[i], key, value, ref);
             if (!insertFlag) {
-                return false;// 数据已经存在, 不需要插入
+                // 数据已经存在, 不需要插入
+                return false;
             }
         } else {
             // 卫星数据已存在, 更新
@@ -195,7 +256,7 @@ public class BTree<K extends Comparable<K>> {
      * @param key 关键字
      * @return 结果
      */
-    public Result searchKey(K key) {
+    private Result searchKeyInternal(K key) {
         BTNode p = root;
         int index = 0;
         while (!p.isleaf) {
@@ -206,7 +267,7 @@ public class BTree<K extends Comparable<K>> {
             p = (BTNode) p.ptrs[index];
         }
         index = lowerBound(p, key);
-        if (p.size > 0 && key.compareTo((K) p.keys[index]) == 0) {
+        if (p.size > 0 && index < p.getSize() && key.compareTo((K) p.keys[index]) == 0) {
             return new Result(p, index, true);
         } else {
             return new Result(p, index, false);

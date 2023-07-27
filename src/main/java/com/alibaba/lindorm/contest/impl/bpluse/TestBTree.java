@@ -1,6 +1,6 @@
 package com.alibaba.lindorm.contest.impl.bpluse;
 
-import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
 
 public class TestBTree {
@@ -37,24 +37,21 @@ public class TestBTree {
 //        bt.print();
 //        bt.printKeysInorder();
 
-        BTree<Integer> bt = new BTree<>(30);
-        Integer[] arr = new Integer[3000000];
+        BTree<Long> bt = new BTree<>(30);
+        Long[] arr = new Long[3000000];
         for (int i = 0; i < arr.length; ++i) {
-            arr[i] = i;
+            arr[i] = (long) i;
         }
 
-        for (Integer s : arr) {
+        for (Long s : arr) {
             bt.insert(s, s + "null");
         }
-        bt.insert(150000, 150002 + "null");
-        bt.delete(150000);
+        bt.delete(150001L);
+        bt.delete(150002L);
+        bt.delete(150003L);
 
-        Result result = bt.searchKey(150000);
-        Object[] keys = result.pt.keys;
-        BTNode next = result.pt.next;
-        Object[] keys1 = next.keys;
-        next = next.next;
-
+        List<Object> list = bt.searchRange(1500001L, 150001L);
+        Object o = bt.searchMax(Long.MAX_VALUE);
         int a = 0;
     }
 

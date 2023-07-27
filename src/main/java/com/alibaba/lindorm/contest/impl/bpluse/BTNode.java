@@ -41,4 +41,8 @@ public class BTNode {
     public Object[] getPtrs() {
         return ptrs;
     }
+
+    public int getSize() {
+        return size;
+    }
 }
