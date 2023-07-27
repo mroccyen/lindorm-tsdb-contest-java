@@ -62,15 +62,18 @@ public class QueryHandler {
             if (tree != null) {
                 //范围查询
                 if (timeLowerBound != -1 && timeUpperBound != -1) {
-                    if (indexBlock.getTimestamp() >= timeLowerBound && indexBlock.getTimestamp() < timeUpperBound) {
-                        queryLatestList.add(indexBlock);
-                    }
+//                    Result result = tree.searchKey(timeLowerBound);
+//                    Object key = result.getPt().getKeys()[result.getIndex()];
+//                    queryRangeMap.put(rowKey, );
+//                    if (indexBlock.getTimestamp() >= timeLowerBound && indexBlock.getTimestamp() < timeUpperBound) {
+//                        queryLatestList.add(indexBlock);
+//                    }
                 } else {
-                    queryRangeMap.put(rowKey, tree.searchKey());
+                   // queryRangeMap.put(rowKey, tree.searchKey());
                 }
             }
         }
-        Iterator<IndexBlock> iterator = indexBlocks.iterator();
+        Iterator<IndexBlock> iterator = null;
         while (iterator.hasNext()) {
             IndexBlock indexBlock = iterator.next();
             //范围查询

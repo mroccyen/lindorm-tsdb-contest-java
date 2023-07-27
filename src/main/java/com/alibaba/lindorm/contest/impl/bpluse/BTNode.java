@@ -33,4 +33,12 @@ public class BTNode {
     void setMaxKey(Object key) {
         keys[size - 1] = key;
     }
+
+    public Object[] getKeys() {
+        return keys;
+    }
+
+    public Object[] getPtrs() {
+        return ptrs;
+    }
 }

@@ -10,4 +10,16 @@ public class Result {
         this.index = index;
         this.tag = tag;
     }
+
+    public BTNode getPt() {
+        return pt;
+    }
+
+    public int getIndex() {
+        return index;
+    }
+
+    public boolean isTag() {
+        return tag;
+    }
 }

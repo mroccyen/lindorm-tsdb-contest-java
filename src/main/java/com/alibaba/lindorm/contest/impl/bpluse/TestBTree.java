@@ -47,6 +47,7 @@ public class TestBTree {
             bt.insert(s, s + "null");
         }
         bt.insert(150000, 150002 + "null");
+        bt.delete(150000);
 
         Result result = bt.searchKey(150000);
         Object[] keys = result.pt.keys;
