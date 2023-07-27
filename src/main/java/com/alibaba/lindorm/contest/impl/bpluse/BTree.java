@@ -48,6 +48,9 @@ public class BTree<K extends Comparable<K>> {
             if (!hasFind) {
                 BTNode next = result.getPt().next;
                 while (!hasFind) {
+                    if (next == null) {
+                        break;
+                    }
                     for (int i = 0; i < next.getSize(); i++) {
                         K key = (K) next.getKeys()[i];
                         if (key.compareTo(keyBegin) >= 0 && key.compareTo(keyEnd) < 0) {
