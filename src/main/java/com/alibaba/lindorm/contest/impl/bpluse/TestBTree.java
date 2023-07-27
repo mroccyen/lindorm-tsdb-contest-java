@@ -50,9 +50,10 @@ public class TestBTree {
         bt.delete(150002L);
         bt.delete(150003L);
 
-        List<Object> list = bt.searchRange(1500001L, 150001L);
+        List<Object> list = bt.searchRange(2999950L, 2999999L);
         Object o = bt.searchMax(Long.MAX_VALUE);
-        int a = 0;
+        System.out.println(list);
+        System.out.println(o);
     }
 
     public static void shuffle(Comparable<?>[] nums) {
