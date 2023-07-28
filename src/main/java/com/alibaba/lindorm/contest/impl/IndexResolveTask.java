@@ -27,8 +27,8 @@ public class IndexResolveTask extends Thread {
 
     @Override
     public void run() {
-        try {
-            while (!stop) {
+        while (!stop) {
+            try {
                 IndexLoadCompleteNotice notice = writeRequestQueue.poll(5, TimeUnit.MILLISECONDS);
                 if (notice != null) {
                     if (notice.isComplete()) {
@@ -44,10 +44,10 @@ public class IndexResolveTask extends Thread {
                         }
                     }
                 }
+            } catch (Exception e) {
+                System.out.println(e.getMessage());
+                System.exit(-1);
             }
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
-            System.exit(-1);
         }
     }
 

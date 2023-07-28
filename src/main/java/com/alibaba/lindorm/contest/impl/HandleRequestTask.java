@@ -36,8 +36,8 @@ public class HandleRequestTask extends Thread {
 
     @Override
     public void run() {
-        try {
-            while (!stop) {
+        while (!stop) {
+            try {
                 List<WriteRequestWrapper> writeRequestWrapperList = new ArrayList<>();
                 while (true) {
                     WriteRequestWrapper writeRequestWrapper = writeRequestQueue.poll(5, TimeUnit.MILLISECONDS);
@@ -55,10 +55,10 @@ public class HandleRequestTask extends Thread {
                 if (!offered) {
                     System.out.println("入对失败");
                 }
+            } catch (Exception e) {
+                System.out.println(e.getMessage());
+                System.exit(-1);
             }
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
-            System.exit(-1);
         }
     }
 

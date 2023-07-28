@@ -61,17 +61,17 @@ public class FlushRequestTask extends Thread {
 
     @Override
     public void run() {
-        try {
-            while (!stop) {
+        while (!stop) {
+            try {
                 List<WriteRequestWrapper> writeRequestWrapperList = handleRequestTask.getFlushRequestQueue().poll(5, TimeUnit.MILLISECONDS);
                 if (writeRequestWrapperList != null && writeRequestWrapperList.size() > 0) {
                     //执行刷盘操作
                     doWrite(writeRequestWrapperList);
                 }
+            } catch (Exception e) {
+                System.out.println(e.getMessage());
+                System.exit(-1);
             }
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
-            System.exit(-1);
         }
     }
 
