@@ -69,7 +69,10 @@ public class FlushRequestTask extends Thread {
                     doWrite(writeRequestWrapperList);
                 }
             } catch (Exception e) {
-                System.out.println(e.getMessage());
+                System.out.println(">>> " + Thread.currentThread().getName() + " FlushRequestTask happen exception: " + e.getMessage());
+                for (StackTraceElement stackTraceElement : e.getStackTrace()) {
+                    System.out.println(">>> " + Thread.currentThread().getName() + " FlushRequestTask happen exception: " + stackTraceElement.toString());
+                }
                 System.exit(-1);
             }
         }
