@@ -113,6 +113,7 @@ public class FlushRequestTask extends Thread {
                 IndexBlock indexBlock = new IndexBlock();
                 indexBlock.setOffset(position + dataWriteFileChanel.position());
                 indexBlock.setTimestamp(row.getTimestamp());
+                indexBlock.setIndex(index);
                 indexBlock.setDataSize(p1 - position);
                 byte[] tableNameBytes = tableName.getBytes();
                 indexBlock.setTableNameLength(tableNameBytes.length);
