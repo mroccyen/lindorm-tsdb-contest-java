@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -17,9 +18,9 @@ public class HandleRequestTask extends Thread {
 
     private boolean stop = false;
 
-    public HandleRequestTask(File dpFile, File ipFile) throws IOException {
-        for (int i = 0; i < 4; i++) {
-            FlushRequestTask flushRequestTask = new FlushRequestTask(this, dpFile, ipFile);
+    public HandleRequestTask(Map<Integer, File> dpFileMap, Map<Integer, File> ipFileMap) throws IOException {
+        for (Map.Entry<Integer, File> e : dpFileMap.entrySet()) {
+            FlushRequestTask flushRequestTask = new FlushRequestTask(this, e.getValue(), ipFileMap.get(e.getKey()), e.getKey().byteValue());
             flushRequestTask.start();
             flushRequestTaskList.add(flushRequestTask);
         }

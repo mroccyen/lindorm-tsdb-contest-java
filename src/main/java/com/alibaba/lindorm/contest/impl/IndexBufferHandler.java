@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static java.nio.file.StandardOpenOption.READ;
@@ -46,58 +47,60 @@ public class IndexBufferHandler {
         INDEX_CACHE_MAP.clear();
     }
 
-    public static void initIndexBuffer(File ipFile, IndexResolveTask indexResolveTask) throws IOException {
-        FileChannel fileChannel = FileChannel.open(ipFile.toPath(), READ);
-        if (fileChannel.size() == 0) {
-            System.out.println(">>> initIndexBuffer no need load index data");
-            return;
-        }
-        System.out.println(">>> initIndexBuffer load exist index data begin");
-        System.out.println(">>> initIndexBuffer exist index file size: " + fileChannel.size());
-        MappedByteBuffer dataByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
-        long start = System.currentTimeMillis();
-        long size = 0;
-        while (dataByteBuffer.hasRemaining()) {
-            //读取索引长度
-            int indexDataLength = dataByteBuffer.getInt();
+    public static void initIndexBuffer(Map<Integer, File> ipFileMap, IndexResolveTask indexResolveTask) throws IOException {
+        for (Map.Entry<Integer, File> ipFile : ipFileMap.entrySet()) {
+            FileChannel fileChannel = FileChannel.open(ipFile.getValue().toPath(), READ);
+            if (fileChannel.size() == 0) {
+                System.out.println(">>> initIndexBuffer file" + ipFile.getKey() + " no need load index data");
+                continue;
+            }
+            System.out.println(">>> initIndexBuffer file" + ipFile.getKey() + " load exist index data begin");
+            System.out.println(">>> initIndexBuffer file" + ipFile.getKey() + " exist index file size: " + fileChannel.size());
+            MappedByteBuffer dataByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
+            long start = System.currentTimeMillis();
+            long size = 0;
+            while (dataByteBuffer.hasRemaining()) {
+                //读取索引长度
+                int indexDataLength = dataByteBuffer.getInt();
 
-            byte[] indexDataByte = new byte[indexDataLength];
-            dataByteBuffer.get(indexDataByte);
+                byte[] indexDataByte = new byte[indexDataLength];
+                dataByteBuffer.get(indexDataByte);
 
+                IndexLoadCompleteNotice notice = new IndexLoadCompleteNotice();
+                notice.setComplete(false);
+                notice.setIndexDataByte(indexDataByte);
+                try {
+                    indexResolveTask.getWriteRequestQueue().put(notice);
+                } catch (InterruptedException e) {
+                    System.out.println(e.getMessage());
+                    System.exit(-1);
+                }
+                size++;
+            }
+            System.out.println(">>> initIndexBuffer file" + ipFile.getKey() + " offered index data size: " + size);
+            //关系通道
+            fileChannel.close();
+
+            IndexLoadCompleteWrapper wrapper = new IndexLoadCompleteWrapper();
+            wrapper.getLock().lock();
+            //通知等待完成
+            indexResolveTask.waitComplete(wrapper);
+            //结束进行通知
             IndexLoadCompleteNotice notice = new IndexLoadCompleteNotice();
-            notice.setComplete(false);
-            notice.setIndexDataByte(indexDataByte);
+            notice.setComplete(true);
+            notice.setIndexDataByte(null);
+            indexResolveTask.getWriteRequestQueue().offer(notice);
             try {
-                indexResolveTask.getWriteRequestQueue().put(notice);
-            } catch (InterruptedException e) {
+                //等待索引数据加载完成
+                wrapper.getCondition().await();
+            } catch (Exception e) {
                 System.out.println(e.getMessage());
                 System.exit(-1);
             }
-            size++;
+            wrapper.getLock().unlock();
+            long end = System.currentTimeMillis();
+            System.out.println(">>> initIndexBuffer file" + ipFile.getKey() + " load exist index time: " + (end - start));
+            System.out.println(">>> initIndexBuffer file" + ipFile.getKey() + " load exist index data complete");
         }
-        System.out.println(">>> initIndexBuffer offered index data size: " + size);
-        //关系通道
-        fileChannel.close();
-
-        IndexLoadCompleteWrapper wrapper = new IndexLoadCompleteWrapper();
-        wrapper.getLock().lock();
-        //通知等待完成
-        indexResolveTask.waitComplete(wrapper);
-        //结束进行通知
-        IndexLoadCompleteNotice notice = new IndexLoadCompleteNotice();
-        notice.setComplete(true);
-        notice.setIndexDataByte(null);
-        indexResolveTask.getWriteRequestQueue().offer(notice);
-        try {
-            //等待索引数据加载完成
-            wrapper.getCondition().await();
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
-            System.exit(-1);
-        }
-        wrapper.getLock().unlock();
-        long end = System.currentTimeMillis();
-        System.out.println(">>> initIndexBuffer load exist index time: " + (end - start));
-        System.out.println(">>> initIndexBuffer load exist index data complete");
     }
 }

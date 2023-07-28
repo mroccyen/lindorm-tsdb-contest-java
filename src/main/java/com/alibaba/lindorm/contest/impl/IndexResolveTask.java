@@ -71,6 +71,10 @@ public class IndexResolveTask extends Thread {
         indexBlock.setTimestamp(timeStamp);
         i = i + 8;
 
+        byte index = indexByteList[i];
+        i = i + 1;
+        indexBlock.setIndex(index);
+
         byte[] dataSizeByte = new byte[4];
         for (int j = i; j < i + 4; j++) {
             dataSizeByte[j - i] = indexByteList[j];

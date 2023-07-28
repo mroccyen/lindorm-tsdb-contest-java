@@ -42,26 +42,16 @@ public class TSDBEngineImpl extends TSDBEngine {
 
     @Override
     public void connect() throws IOException {
-        String absolutePath = dataPath.getAbsolutePath();
-        String dp = absolutePath + File.separator + CommonSetting.DATA_NAME;
-        File dpFile = new File(dp);
-        if (!dpFile.exists()) {
-            dpFile.createNewFile();
-        }
-        String ip = absolutePath + File.separator + CommonSetting.INDEX_NAME;
-        File ipFile = new File(ip);
-        if (!ipFile.exists()) {
-            ipFile.createNewFile();
-        }
         indexResolveTask = new IndexResolveTask();
         indexResolveTask.start();
+        FileManager fileManager = new FileManager(getDataPath());
         //加载索引信息
-        IndexBufferHandler.initIndexBuffer(ipFile, indexResolveTask);
+        IndexBufferHandler.initIndexBuffer(fileManager.getIpFileMap(), indexResolveTask);
         //开启写入任务
-        writeTask = new HandleRequestTask(dpFile, ipFile);
+        writeTask = new HandleRequestTask(fileManager.getDpFileMap(), fileManager.getIpFileMap());
         writeTask.start();
         //初始化数据查询处理器
-        queryHandler = new QueryHandler(dpFile);
+        queryHandler = new QueryHandler(fileManager.getDpFileMap());
         System.out.println(">>> connect complete");
     }
 

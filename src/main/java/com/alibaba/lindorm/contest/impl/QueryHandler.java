@@ -14,10 +14,10 @@ import java.util.stream.Collectors;
 import static java.nio.file.StandardOpenOption.READ;
 
 public class QueryHandler {
-    private final File dpFile;
+    private final Map<Integer, File> dpFileMap;
 
-    public QueryHandler(File dpFile) {
-        this.dpFile = dpFile;
+    public QueryHandler(Map<Integer, File> dpFileMap) {
+        this.dpFileMap = dpFileMap;
     }
 
     public ArrayList<Row> executeLatestQuery(LatestQueryRequest pReadReq) throws IOException {
@@ -77,6 +77,11 @@ public class QueryHandler {
             r = queryLatestList;
         }
 
+        Map<Integer, FileChannel> fileChannelMap = new TreeMap<>();
+        for (Map.Entry<Integer, File> fileEntry : dpFileMap.entrySet()) {
+            FileChannel fileChannel = FileChannel.open(fileEntry.getValue().toPath(), READ);
+            fileChannelMap.put(fileEntry.getKey(), fileChannel);
+        }
         Map<String, Vin> vinNameMap = vinList.stream().collect(Collectors.toMap(i -> new String(i.getVin()), i -> i));
         ArrayList<Row> rowList = new ArrayList<>();
         for (IndexBlock indexBlock : r) {
@@ -87,9 +92,9 @@ public class QueryHandler {
                 long t = indexBlock.getTimestamp();
 
                 ByteBuffer sizeByteBuffer = ByteBuffer.allocateDirect(indexBlock.getDataSize());
-                FileChannel fileChannel = FileChannel.open(dpFile.toPath(), READ);
+                FileChannel fileChannel = fileChannelMap.get((int) indexBlock.getIndex());
                 if (fileChannel.size() == 0) {
-                    return new ArrayList<>();
+                    continue;
                 }
                 fileChannel.read(sizeByteBuffer, indexBlock.getOffset());
                 sizeByteBuffer.flip();
@@ -142,6 +147,10 @@ public class QueryHandler {
                 rowList.add(row);
             }
         }
+        for (Map.Entry<Integer, FileChannel> fileChannelEntry : fileChannelMap.entrySet()) {
+            fileChannelEntry.getValue().close();
+        }
+
         return rowList;
     }
 }

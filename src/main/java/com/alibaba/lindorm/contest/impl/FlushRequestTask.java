@@ -31,7 +31,9 @@ public class FlushRequestTask extends Thread {
 
     private final HandleRequestTask handleRequestTask;
 
-    public FlushRequestTask(HandleRequestTask handleRequestTask, File dpFile, File ipFile) throws IOException {
+    private final byte index;
+
+    public FlushRequestTask(HandleRequestTask handleRequestTask, File dpFile, File ipFile, byte index) throws IOException {
         dataWriteFileChanel = FileChannel.open(dpFile.toPath(), APPEND);
         //100M
         dataWriteByteBuffer = ByteBuffer.allocateDirect(1024 * 1024 * 100);
@@ -41,6 +43,7 @@ public class FlushRequestTask extends Thread {
         indexWriteByteBuffer = ByteBuffer.allocateDirect(1024 * 1024 * 100);
 
         this.handleRequestTask = handleRequestTask;
+        this.index = index;
     }
 
     public void shutdown() {
@@ -48,8 +51,8 @@ public class FlushRequestTask extends Thread {
         try {
             dataWriteFileChanel.force(false);
             indexWriteFileChanel.force(false);
-            System.out.println(">>> shutdown exist data file size: " + dataWriteFileChanel.size());
-            System.out.println(">>> shutdown exist index file size: " + indexWriteFileChanel.size());
+            System.out.println(">>> shutdown file" + index + " exist data file size: " + dataWriteFileChanel.size());
+            System.out.println(">>> shutdown file" + index + " exist index file size: " + indexWriteFileChanel.size());
         } catch (Exception e) {
             System.out.println(e.getMessage());
             System.exit(-1);
@@ -120,6 +123,7 @@ public class FlushRequestTask extends Thread {
                 indexWriteByteBuffer.putInt(indexBlock.getIndexBlockLength());
                 indexWriteByteBuffer.putLong(indexBlock.getOffset());
                 indexWriteByteBuffer.putLong(indexBlock.getTimestamp());
+                indexWriteByteBuffer.put(index);
                 indexWriteByteBuffer.putInt(indexBlock.getDataSize());
                 indexWriteByteBuffer.putInt(indexBlock.getTableNameLength());
                 indexWriteByteBuffer.put(indexBlock.getTableName());
