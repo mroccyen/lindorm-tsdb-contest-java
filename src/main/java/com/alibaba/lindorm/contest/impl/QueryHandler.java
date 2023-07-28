@@ -21,28 +21,46 @@ public class QueryHandler {
     }
 
     public ArrayList<Row> executeLatestQuery(LatestQueryRequest pReadReq) throws IOException {
-        //List<IndexBlock> indexBlocks = IndexBufferHandler.getIndexBlocks(pReadReq.getTableName());
-        //int size = indexBlocks.size();
+        ConcurrentHashMap<String, BTree<Long>> indexBlockMap = IndexBufferHandler.getIndexBlockMap(pReadReq.getTableName());
+        int size = indexBlockMap.size();
         //System.out.println(">>> executeLatestQuery " + pReadReq.getTableName() + " exist index data size: " + size);
         long start = System.currentTimeMillis();
         String tableName = pReadReq.getTableName();
         Collection<Vin> vinList = pReadReq.getVins();
         Set<String> requestedColumns = pReadReq.getRequestedColumns();
-        ArrayList<Row> result = query(tableName, vinList, requestedColumns, -1, -1);
+        ArrayList<Row> result;
+        try {
+            result = query(tableName, vinList, requestedColumns, -1, -1);
+        } catch (Exception ex) {
+            System.out.println(">>> executeLatestQuery happen exception: " + ex.getMessage());
+            for (StackTraceElement stackTraceElement : ex.getStackTrace()) {
+                System.out.println(">>> executeLatestQuery happen exception: " + stackTraceElement.toString());
+            }
+            throw new IOException(ex);
+        }
         long end = System.currentTimeMillis();
         //System.out.println(">>> executeLatestQuery time: " + (end - start));
         return result;
     }
 
     public ArrayList<Row> executeTimeRangeQuery(TimeRangeQueryRequest trReadReq) throws IOException {
-        //List<IndexBlock> indexBlocks = IndexBufferHandler.getIndexBlocks(trReadReq.getTableName());
-        //int size = indexBlocks.size();
+        ConcurrentHashMap<String, BTree<Long>> indexBlockMap = IndexBufferHandler.getIndexBlockMap(trReadReq.getTableName());
+        int size = indexBlockMap.size();
         //System.out.println(">>> executeTimeRangeQuery " + trReadReq.getTableName() + " exist index data size: " + size);
         long start = System.currentTimeMillis();
         String tableName = trReadReq.getTableName();
         Vin vin = trReadReq.getVin();
         Set<String> requestedColumns = trReadReq.getRequestedFields();
-        ArrayList<Row> result = query(tableName, Collections.singletonList(vin), requestedColumns, trReadReq.getTimeLowerBound(), trReadReq.getTimeUpperBound());
+        ArrayList<Row> result;
+        try {
+            result = query(tableName, Collections.singletonList(vin), requestedColumns, trReadReq.getTimeLowerBound(), trReadReq.getTimeUpperBound());
+        } catch (Exception ex) {
+            System.out.println(">>> executeTimeRangeQuery happen exception: " + ex.getMessage());
+            for (StackTraceElement stackTraceElement : ex.getStackTrace()) {
+                System.out.println(">>> executeTimeRangeQuery happen exception: " + stackTraceElement.toString());
+            }
+            throw new IOException(ex);
+        }
         long end = System.currentTimeMillis();
         //System.out.println(">>> executeTimeRangeQuery time: " + (end - start));
         return result;
@@ -141,7 +159,6 @@ public class QueryHandler {
                     bufferPosition = sizeByteBuffer.position();
                     bufferLimit = sizeByteBuffer.limit();
                 }
-                fileChannel.close();
                 //构建Row
                 Row row = new Row(vin, t, columns);
                 rowList.add(row);
