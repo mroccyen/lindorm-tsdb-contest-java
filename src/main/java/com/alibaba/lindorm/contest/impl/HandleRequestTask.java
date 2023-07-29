@@ -21,6 +21,7 @@ public class HandleRequestTask extends Thread {
     public HandleRequestTask(Map<Integer, File> dpFileMap, Map<Integer, File> ipFileMap) throws IOException {
         for (Map.Entry<Integer, File> e : dpFileMap.entrySet()) {
             FlushRequestTask flushRequestTask = new FlushRequestTask(this, e.getValue(), ipFileMap.get(e.getKey()), e.getKey().byteValue());
+            flushRequestTask.setName("FlushRequestTask-" + e.getKey());
             flushRequestTask.start();
             flushRequestTaskList.add(flushRequestTask);
         }
@@ -56,9 +57,9 @@ public class HandleRequestTask extends Thread {
                     System.out.println("入对失败");
                 }
             } catch (Exception e) {
-                System.out.println(">>> " + Thread.currentThread().getName() + " HandleRequestTask happen exception: " + e.getMessage());
+                System.out.println(">>> " + Thread.currentThread().getName() + " thread happen exception: " + e.getMessage());
                 for (StackTraceElement stackTraceElement : e.getStackTrace()) {
-                    System.out.println(">>> " + Thread.currentThread().getName() + " HandleRequestTask happen exception: " + stackTraceElement.toString());
+                    System.out.println(">>> " + Thread.currentThread().getName() + " thread happen exception: " + stackTraceElement.toString());
                 }
                 System.exit(-1);
             }

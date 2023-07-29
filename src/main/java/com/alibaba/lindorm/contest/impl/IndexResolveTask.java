@@ -45,9 +45,9 @@ public class IndexResolveTask extends Thread {
                     }
                 }
             } catch (Exception e) {
-                System.out.println(">>> " + Thread.currentThread().getName() + " IndexResolveTask happen exception: " + e.getMessage());
+                System.out.println(">>> " + Thread.currentThread().getName() + " thread happen exception: " + e.getMessage());
                 for (StackTraceElement stackTraceElement : e.getStackTrace()) {
-                    System.out.println(">>> " + Thread.currentThread().getName() + " IndexResolveTask happen exception: " + stackTraceElement.toString());
+                    System.out.println(">>> " + Thread.currentThread().getName() + " thread happen exception: " + stackTraceElement.toString());
                 }
                 System.exit(-1);
             }

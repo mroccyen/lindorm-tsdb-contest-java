@@ -43,12 +43,14 @@ public class TSDBEngineImpl extends TSDBEngine {
     @Override
     public void connect() throws IOException {
         indexResolveTask = new IndexResolveTask();
+        indexResolveTask.setName("IndexResolveTask");
         indexResolveTask.start();
         FileManager fileManager = new FileManager(getDataPath());
         //加载索引信息
         IndexBufferHandler.initIndexBuffer(fileManager.getIpFileMap(), indexResolveTask);
         //开启写入任务
         writeTask = new HandleRequestTask(fileManager.getDpFileMap(), fileManager.getIpFileMap());
+        writeTask.setName("HandleRequestTask");
         writeTask.start();
         //初始化数据查询处理器
         queryHandler = new QueryHandler(fileManager.getDpFileMap());
