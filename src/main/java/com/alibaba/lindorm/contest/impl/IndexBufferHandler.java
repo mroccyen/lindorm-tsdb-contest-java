@@ -61,7 +61,7 @@ public class IndexBufferHandler {
             long size = 0;
             while (dataByteBuffer.hasRemaining()) {
                 //读取索引长度
-                int indexDataLength = dataByteBuffer.getInt();
+                byte indexDataLength = dataByteBuffer.get();
 
                 byte[] indexDataByte = new byte[indexDataLength];
                 dataByteBuffer.get(indexDataByte);

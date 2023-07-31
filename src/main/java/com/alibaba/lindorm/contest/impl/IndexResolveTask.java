@@ -1,5 +1,7 @@
 package com.alibaba.lindorm.contest.impl;
 
+import com.alibaba.lindorm.contest.structs.Vin;
+
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -86,13 +88,9 @@ public class IndexResolveTask extends Thread {
         indexBlock.setDataSize(dataSize);
         i = i + 4;
 
-        byte[] tableNameLengthByte = new byte[4];
-        for (int j = i; j < i + 4; j++) {
-            tableNameLengthByte[j - i] = indexByteList[j];
-        }
-        int tableNameLength = ByteArrayUtil.byteArray2Int_Big_Endian(tableNameLengthByte);
+        byte tableNameLength = indexByteList[i];
         indexBlock.setTableNameLength(tableNameLength);
-        i = i + 4;
+        i = i + 1;
 
         byte[] tableName = new byte[tableNameLength];
         for (int j = i; j < i + tableNameLength; j++) {
@@ -101,14 +99,7 @@ public class IndexResolveTask extends Thread {
         indexBlock.setTableName(tableName);
         i = i + tableNameLength;
 
-        byte[] rowKeyLengthByte = new byte[4];
-        for (int j = i; j < i + 4; j++) {
-            rowKeyLengthByte[j - i] = indexByteList[j];
-        }
-        int rowKeyLength = ByteArrayUtil.byteArray2Int_Big_Endian(rowKeyLengthByte);
-        indexBlock.setRowKeyLength(rowKeyLength);
-        i = i + 4;
-
+        int rowKeyLength = Vin.VIN_LENGTH;
         byte[] rowKey = new byte[rowKeyLength];
         for (int j = i; j < i + rowKeyLength; j++) {
             rowKey[j - i] = indexByteList[j];

@@ -92,7 +92,6 @@ public class FlushRequestTask extends Thread {
                 int position = dataWriteByteBuffer.position();
                 for (Map.Entry<String, ColumnValue> entity : columns.entrySet()) {
                     KeyValue keyValue = resolveKey(entity.getKey(), entity.getValue(), row.getTimestamp(), vin);
-                    dataWriteByteBuffer.put(keyValue.getRowKeyLength());
                     dataWriteByteBuffer.put(keyValue.getRowKey());
                     dataWriteByteBuffer.put(keyValue.getColumnNameLength());
                     dataWriteByteBuffer.put(keyValue.getColumnName());
@@ -115,19 +114,17 @@ public class FlushRequestTask extends Thread {
                 indexBlock.setIndex(index);
                 indexBlock.setDataSize(p1 - position);
                 byte[] tableNameBytes = tableName.getBytes();
-                indexBlock.setTableNameLength(tableNameBytes.length);
+                indexBlock.setTableNameLength((byte) tableNameBytes.length);
                 indexBlock.setTableName(tableNameBytes);
-                indexBlock.setRowKeyLength(Vin.VIN_LENGTH);
                 indexBlock.setRowKey(vin.getVin());
 
-                indexWriteByteBuffer.putInt(indexBlock.getIndexBlockLength());
+                indexWriteByteBuffer.put(indexBlock.getIndexBlockLength());
                 indexWriteByteBuffer.putLong(indexBlock.getOffset());
                 indexWriteByteBuffer.putLong(indexBlock.getTimestamp());
                 indexWriteByteBuffer.put(index);
                 indexWriteByteBuffer.putInt(indexBlock.getDataSize());
-                indexWriteByteBuffer.putInt(indexBlock.getTableNameLength());
+                indexWriteByteBuffer.put(indexBlock.getTableNameLength());
                 indexWriteByteBuffer.put(indexBlock.getTableName());
-                indexWriteByteBuffer.putInt(indexBlock.getRowKeyLength());
                 indexWriteByteBuffer.put(indexBlock.getRowKey());
 
                 IndexBufferHandler.offerIndex(tableName, indexBlock);
@@ -154,9 +151,6 @@ public class FlushRequestTask extends Thread {
 
     private KeyValue resolveKey(String columnNameStr, ColumnValue columnValue, long timestamp, Vin vin) {
         KeyValue keyValue = new KeyValue();
-
-        int rowKeyLength = Vin.VIN_LENGTH;
-        keyValue.setRowKeyLength((byte) rowKeyLength);
 
         byte[] rowKey = vin.getVin();
         keyValue.setRowKey(rowKey);
