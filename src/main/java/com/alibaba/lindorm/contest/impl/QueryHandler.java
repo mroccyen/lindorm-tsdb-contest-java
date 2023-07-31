@@ -119,20 +119,18 @@ public class QueryHandler {
                 int bufferPosition = sizeByteBuffer.position();
                 int bufferLimit = sizeByteBuffer.limit();
                 while (bufferPosition < bufferLimit) {
-                    sizeByteBuffer.getInt();
-                    int rowKeyLength = sizeByteBuffer.getInt();
+                    int rowKeyLength = sizeByteBuffer.get();
                     byte[] rowKey = new byte[rowKeyLength];
                     for (int i = 0; i < rowKeyLength; i++) {
                         rowKey[i] = sizeByteBuffer.get();
                     }
                     String existRowKey = new String(rowKey);
-                    int columnNameLength = sizeByteBuffer.getInt();
+                    int columnNameLength = sizeByteBuffer.get();
                     byte[] columnName = new byte[columnNameLength];
                     for (int i = 0; i < columnNameLength; i++) {
                         columnName[i] = sizeByteBuffer.get();
                     }
                     String existColumnName = new String(columnName);
-                    long timestamp = sizeByteBuffer.getLong();
                     byte valueType = sizeByteBuffer.get();
                     int valueLength = sizeByteBuffer.getInt();
                     if (valueType == 1) {

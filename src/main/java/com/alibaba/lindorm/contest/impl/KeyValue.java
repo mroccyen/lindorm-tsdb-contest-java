@@ -5,23 +5,18 @@ import com.alibaba.lindorm.contest.structs.ColumnValue;
 import java.nio.ByteBuffer;
 
 public class KeyValue {
-    private int rowKeyLength;
+    private byte rowKeyLength;
     private byte[] rowKey;
-    private int columnNameLength;
+    private byte columnNameLength;
     private byte[] columnName;
-    private long timestamp;
     private ColumnValue.ColumnType columnType;
     private ColumnValue columnValue;
 
-    public int getKeyLength() {
-        return 4 + rowKey.length + 4 + columnName.length + 8 + 1;
-    }
-
-    public int getRowKeyLength() {
+    public byte getRowKeyLength() {
         return rowKeyLength;
     }
 
-    public void setRowKeyLength(int rowKeyLength) {
+    public void setRowKeyLength(byte rowKeyLength) {
         this.rowKeyLength = rowKeyLength;
     }
 
@@ -33,11 +28,11 @@ public class KeyValue {
         this.rowKey = rowKey;
     }
 
-    public int getColumnNameLength() {
+    public byte getColumnNameLength() {
         return columnNameLength;
     }
 
-    public void setColumnNameLength(int columnNameLength) {
+    public void setColumnNameLength(byte columnNameLength) {
         this.columnNameLength = columnNameLength;
     }
 
@@ -47,14 +42,6 @@ public class KeyValue {
 
     public void setColumnName(byte[] columnName) {
         this.columnName = columnName;
-    }
-
-    public long getTimestamp() {
-        return timestamp;
-    }
-
-    public void setTimestamp(long timestamp) {
-        this.timestamp = timestamp;
     }
 
     public ColumnValue.ColumnType getColumnType() {

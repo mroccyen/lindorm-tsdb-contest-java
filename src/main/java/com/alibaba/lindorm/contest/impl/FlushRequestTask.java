@@ -2,7 +2,6 @@ package com.alibaba.lindorm.contest.impl;
 
 import com.alibaba.lindorm.contest.structs.ColumnValue;
 import com.alibaba.lindorm.contest.structs.Row;
-import com.alibaba.lindorm.contest.structs.Schema;
 import com.alibaba.lindorm.contest.structs.Vin;
 import com.alibaba.lindorm.contest.structs.WriteRequest;
 
@@ -86,20 +85,17 @@ public class FlushRequestTask extends Thread {
 
             WriteRequest writeRequest = writeRequestWrapper.getWriteRequest();
             String tableName = writeRequest.getTableName();
-            Schema schema = writeRequestWrapper.getSchema();
             Collection<Row> rows = writeRequest.getRows();
             for (Row row : rows) {
                 Map<String, ColumnValue> columns = row.getColumns();
                 Vin vin = row.getVin();
                 int position = dataWriteByteBuffer.position();
                 for (Map.Entry<String, ColumnValue> entity : columns.entrySet()) {
-                    KeyValue keyValue = resolveKey(entity.getKey(), entity.getValue(), row.getTimestamp(), vin, schema);
-                    dataWriteByteBuffer.putInt(keyValue.getKeyLength());
-                    dataWriteByteBuffer.putInt(keyValue.getRowKeyLength());
+                    KeyValue keyValue = resolveKey(entity.getKey(), entity.getValue(), row.getTimestamp(), vin);
+                    dataWriteByteBuffer.put(keyValue.getRowKeyLength());
                     dataWriteByteBuffer.put(keyValue.getRowKey());
-                    dataWriteByteBuffer.putInt(keyValue.getColumnNameLength());
+                    dataWriteByteBuffer.put(keyValue.getColumnNameLength());
                     dataWriteByteBuffer.put(keyValue.getColumnName());
-                    dataWriteByteBuffer.putLong(keyValue.getTimestamp());
                     dataWriteByteBuffer.put(keyValue.getValueType());
                     dataWriteByteBuffer.putInt(keyValue.getValueLength());
                     if (keyValue.getColumnType().equals(ColumnValue.ColumnType.COLUMN_TYPE_STRING)) {
@@ -156,11 +152,11 @@ public class FlushRequestTask extends Thread {
         indexWriteByteBuffer.clear();
     }
 
-    private KeyValue resolveKey(String columnNameStr, ColumnValue columnValue, long timestamp, Vin vin, Schema schema) {
+    private KeyValue resolveKey(String columnNameStr, ColumnValue columnValue, long timestamp, Vin vin) {
         KeyValue keyValue = new KeyValue();
 
         int rowKeyLength = Vin.VIN_LENGTH;
-        keyValue.setRowKeyLength(rowKeyLength);
+        keyValue.setRowKeyLength((byte) rowKeyLength);
 
         byte[] rowKey = vin.getVin();
         keyValue.setRowKey(rowKey);
@@ -168,9 +164,7 @@ public class FlushRequestTask extends Thread {
         byte[] columnName = columnNameStr.getBytes();
         int columnNameLength = columnName.length;
         keyValue.setColumnName(columnName);
-        keyValue.setColumnNameLength(columnNameLength);
-
-        keyValue.setTimestamp(timestamp);
+        keyValue.setColumnNameLength((byte) columnNameLength);
 
         ColumnValue.ColumnType columnType = columnValue.getColumnType();
         keyValue.setColumnType(columnType);
