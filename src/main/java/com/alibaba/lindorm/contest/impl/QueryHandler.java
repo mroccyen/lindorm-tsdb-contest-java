@@ -119,12 +119,6 @@ public class QueryHandler {
                 int bufferPosition = sizeByteBuffer.position();
                 int bufferLimit = sizeByteBuffer.limit();
                 while (bufferPosition < bufferLimit) {
-                    int rowKeyLength = Vin.VIN_LENGTH;
-                    byte[] rowKey = new byte[rowKeyLength];
-                    for (int i = 0; i < rowKeyLength; i++) {
-                        rowKey[i] = sizeByteBuffer.get();
-                    }
-                    String existRowKey = new String(rowKey);
                     int columnNameLength = sizeByteBuffer.get();
                     byte[] columnName = new byte[columnNameLength];
                     for (int i = 0; i < columnNameLength; i++) {

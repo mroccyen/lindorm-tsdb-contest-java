@@ -23,21 +23,33 @@ public class FileManager {
                 for (File listFile : listFiles) {
                     String fileName = listFile.getName();
                     String[] split = fileName.split("\\.");
-                    FilePear filePear = new FilePear();
                     int i = 0;
                     if (split[1].equals(CommonSetting.INDEX_EXT)) {
                         String s = split[0];
                         String[] ss = s.split("_");
                         i = Integer.parseInt(ss[1]);
-                        filePear.setIpFile(listFile);
+                        FilePear f = map.get(i);
+                        if (f != null) {
+                            f.setIpFile(listFile);
+                        } else {
+                            FilePear filePear = new FilePear();
+                            filePear.setIpFile(listFile);
+                            map.put(i, filePear);
+                        }
                     }
                     if (split[1].equals(CommonSetting.DATA_EXT)) {
                         String s = split[0];
                         String[] ss = s.split("_");
                         i = Integer.parseInt(ss[1]);
-                        filePear.setDpFile(listFile);
+                        FilePear f = map.get(i);
+                        if (f != null) {
+                            f.setDpFile(listFile);
+                        } else {
+                            FilePear filePear = new FilePear();
+                            filePear.setDpFile(listFile);
+                            map.put(i, filePear);
+                        }
                     }
-                    map.put(i, filePear);
                 }
                 fileMap.put(tableName, map);
             }
