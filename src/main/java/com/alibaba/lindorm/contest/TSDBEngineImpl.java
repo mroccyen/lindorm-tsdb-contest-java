@@ -51,9 +51,9 @@ public class TSDBEngineImpl extends TSDBEngine {
         //如果存在文件
         if (fileManager.hasFiles()) {
             //加载索引信息
-            IndexBufferHandler.initIndexBuffer(fileManager.getIpFileMap(), indexResolveTask);
+            IndexBufferHandler.initIndexBuffer(fileManager.getFileMap(), indexResolveTask);
             //开启写入任务
-            writeTask = new HandleRequestTask(fileManager.getDpFileMap(), fileManager.getIpFileMap());
+            writeTask = new HandleRequestTask(fileManager.getFileMap());
             writeTask.setName("HandleRequestTask");
             writeTask.start();
         }
@@ -70,7 +70,7 @@ public class TSDBEngineImpl extends TSDBEngine {
         //如果存在文件
         if (fileManager.hasFiles()) {
             //开启写入任务
-            writeTask = new HandleRequestTask(fileManager.getDpFileMap(), fileManager.getIpFileMap());
+            writeTask = new HandleRequestTask(fileManager.getFileMap());
             writeTask.setName("HandleRequestTask");
             writeTask.start();
         }

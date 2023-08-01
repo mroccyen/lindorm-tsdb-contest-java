@@ -3,7 +3,6 @@ package com.alibaba.lindorm.contest.impl;
 import com.alibaba.lindorm.contest.impl.bpluse.BTree;
 import com.alibaba.lindorm.contest.structs.*;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -96,8 +95,9 @@ public class QueryHandler {
         }
 
         Map<Integer, FileChannel> fileChannelMap = new TreeMap<>();
-        for (Map.Entry<Integer, File> fileEntry : fileManager.getDpFileMap().entrySet()) {
-            FileChannel fileChannel = FileChannel.open(fileEntry.getValue().toPath(), READ);
+        Map<Integer, FileManager.FilePear> map = fileManager.getFileMap().get(tableName);
+        for (Map.Entry<Integer, FileManager.FilePear> fileEntry : map.entrySet()) {
+            FileChannel fileChannel = FileChannel.open(fileEntry.getValue().getDpFile().toPath(), READ);
             fileChannelMap.put(fileEntry.getKey(), fileChannel);
         }
         Map<String, Vin> vinNameMap = vinList.stream().collect(Collectors.toMap(i -> new String(i.getVin()), i -> i));

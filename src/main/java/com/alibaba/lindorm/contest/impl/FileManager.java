@@ -6,8 +6,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class FileManager {
-    private final Map<Integer, File> dpFileMap = new HashMap<>();
-    private final Map<Integer, File> ipFileMap = new HashMap<>();
+    private final Map<String, Map<Integer, FilePear>> fileMap = new HashMap<>();
     private final File dataPath;
 
     public FileManager(File dataPath) {
@@ -20,22 +19,27 @@ public class FileManager {
             String tableName = file.getName();
             File[] listFiles = file.listFiles();
             if (listFiles != null) {
+                Map<Integer, FilePear> map = new HashMap<>(listFiles.length);
                 for (File listFile : listFiles) {
                     String fileName = listFile.getName();
                     String[] split = fileName.split("\\.");
+                    FilePear filePear = new FilePear();
+                    int i = 0;
                     if (split[1].equals(CommonSetting.INDEX_EXT)) {
                         String s = split[0];
                         String[] ss = s.split("_");
-                        Integer i = Integer.parseInt(ss[1]);
-                        ipFileMap.put(i, listFile);
+                        i = Integer.parseInt(ss[1]);
+                        filePear.setIpFile(listFile);
                     }
                     if (split[1].equals(CommonSetting.DATA_EXT)) {
                         String s = split[0];
                         String[] ss = s.split("_");
-                        Integer i = Integer.parseInt(ss[1]);
-                        dpFileMap.put(i, listFile);
+                        i = Integer.parseInt(ss[1]);
+                        filePear.setDpFile(listFile);
                     }
+                    map.put(i, filePear);
                 }
+                fileMap.put(tableName, map);
             }
         }
     }
@@ -47,32 +51,55 @@ public class FileManager {
         if (!tablePath.exists()) {
             tablePath.mkdir();
         }
+        Map<Integer, FilePear> map = new HashMap<>(CommonSetting.DATA_FILE_COUNT);
         for (int i = 0; i < CommonSetting.DATA_FILE_COUNT; i++) {
+            FilePear filePear = new FilePear();
+
             String dp = p + File.separator + CommonSetting.DATA_NAME + "_" + i + CommonSetting.DOT + CommonSetting.DATA_EXT;
             File dpFile = new File(dp);
             if (!dpFile.exists()) {
                 dpFile.createNewFile();
             }
-            this.dpFileMap.put(i, dpFile);
+            filePear.setDpFile(dpFile);
 
             String ip = p + File.separator + CommonSetting.INDEX_NAME + "_" + i + CommonSetting.DOT + CommonSetting.INDEX_EXT;
             File ipFile = new File(ip);
             if (!ipFile.exists()) {
                 ipFile.createNewFile();
             }
-            this.ipFileMap.put(i, ipFile);
+            filePear.setIpFile(ipFile);
+
+            map.put(i, filePear);
         }
+        fileMap.put(tableName, map);
     }
 
     public boolean hasFiles() {
-        return dpFileMap.size() > 0 && ipFileMap.size() > 0;
+        return fileMap.size() > 0;
     }
 
-    public Map<Integer, File> getDpFileMap() {
-        return dpFileMap;
+    public Map<String, Map<Integer, FilePear>> getFileMap() {
+        return fileMap;
     }
 
-    public Map<Integer, File> getIpFileMap() {
-        return ipFileMap;
+    public static class FilePear {
+        private File ipFile;
+        private File dpFile;
+
+        public File getIpFile() {
+            return ipFile;
+        }
+
+        public void setIpFile(File ipFile) {
+            this.ipFile = ipFile;
+        }
+
+        public File getDpFile() {
+            return dpFile;
+        }
+
+        public void setDpFile(File dpFile) {
+            this.dpFile = dpFile;
+        }
     }
 }

@@ -5,19 +5,10 @@ import com.alibaba.lindorm.contest.structs.ColumnValue;
 import java.nio.ByteBuffer;
 
 public class KeyValue {
-    private byte[] rowKey;
     private byte columnNameLength;
     private byte[] columnName;
     private ColumnValue.ColumnType columnType;
     private ColumnValue columnValue;
-
-    public byte[] getRowKey() {
-        return rowKey;
-    }
-
-    public void setRowKey(byte[] rowKey) {
-        this.rowKey = rowKey;
-    }
 
     public byte getColumnNameLength() {
         return columnNameLength;

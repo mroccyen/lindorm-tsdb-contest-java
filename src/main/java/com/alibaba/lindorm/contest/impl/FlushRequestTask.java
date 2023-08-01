@@ -9,20 +9,17 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static java.nio.file.StandardOpenOption.APPEND;
 
 public class FlushRequestTask extends Thread {
-    private final FileChannel dataWriteFileChanel;
+    private final Map<String, FileChannelPear> dataWriteFileChanelMap = new HashMap<>();
 
     private final ByteBuffer dataWriteByteBuffer;
 
-    private final FileChannel indexWriteFileChanel;
+    private final Map<String, FileChannelPear> indexWriteFileChanelMap = new HashMap<>();
 
     private final ByteBuffer indexWriteByteBuffer;
 
@@ -30,28 +27,43 @@ public class FlushRequestTask extends Thread {
 
     private final HandleRequestTask handleRequestTask;
 
-    private final byte index;
 
-    public FlushRequestTask(HandleRequestTask handleRequestTask, File dpFile, File ipFile, byte index) throws IOException {
-        dataWriteFileChanel = FileChannel.open(dpFile.toPath(), APPEND);
+    public FlushRequestTask(HandleRequestTask handleRequestTask) {
         //100M
         dataWriteByteBuffer = ByteBuffer.allocateDirect(1024 * 1024 * 100);
-
-        indexWriteFileChanel = FileChannel.open(ipFile.toPath(), APPEND);
         //100M
         indexWriteByteBuffer = ByteBuffer.allocateDirect(1024 * 1024 * 100);
 
         this.handleRequestTask = handleRequestTask;
-        this.index = index;
+    }
+
+    public void addFileChannel(String tableName, File dpFile, File ipFile, int index) throws IOException {
+        FileChannel indexWriteFileChanel = FileChannel.open(ipFile.toPath(), APPEND);
+        FileChannelPear indexFileChannelPear = new FileChannelPear();
+        indexFileChannelPear.setIndex(index);
+        indexFileChannelPear.setFileChannel(indexWriteFileChanel);
+        indexWriteFileChanelMap.put(tableName, indexFileChannelPear);
+
+        FileChannel dataWriteFileChanel = FileChannel.open(dpFile.toPath(), APPEND);
+        FileChannelPear dataFileChannelPear = new FileChannelPear();
+        dataFileChannelPear.setIndex(index);
+        dataFileChannelPear.setFileChannel(dataWriteFileChanel);
+        dataWriteFileChanelMap.put(tableName, dataFileChannelPear);
     }
 
     public void shutdown() {
         stop = true;
         try {
-            dataWriteFileChanel.force(false);
-            indexWriteFileChanel.force(false);
-            System.out.println(">>> shutdown file" + index + " exist data file size: " + dataWriteFileChanel.size());
-            System.out.println(">>> shutdown file" + index + " exist index file size: " + indexWriteFileChanel.size());
+            for (Map.Entry<String, FileChannelPear> e : dataWriteFileChanelMap.entrySet()) {
+                FileChannel fileChannel = e.getValue().getFileChannel();
+                fileChannel.force(false);
+                System.out.println(">>> shutdown file" + e.getValue().getIndex() + " exist data file size: " + fileChannel.size());
+            }
+            for (Map.Entry<String, FileChannelPear> e : indexWriteFileChanelMap.entrySet()) {
+                FileChannel fileChannel = e.getValue().getFileChannel();
+                fileChannel.force(false);
+                System.out.println(">>> shutdown file" + e.getValue().getIndex() + " exist index file size: " + fileChannel.size());
+            }
         } catch (Exception e) {
             System.out.println(e.getMessage());
             System.exit(-1);
@@ -85,14 +97,16 @@ public class FlushRequestTask extends Thread {
 
             WriteRequest writeRequest = writeRequestWrapper.getWriteRequest();
             String tableName = writeRequest.getTableName();
+            FileChannelPear dataFileChannelPear = dataWriteFileChanelMap.get(tableName);
+            FileChannel dataWriteFileChanel = dataFileChannelPear.getFileChannel();
+            FileChannel indexWriteFileChanel = indexWriteFileChanelMap.get(tableName).getFileChannel();
             Collection<Row> rows = writeRequest.getRows();
             for (Row row : rows) {
                 Map<String, ColumnValue> columns = row.getColumns();
                 Vin vin = row.getVin();
                 int position = dataWriteByteBuffer.position();
                 for (Map.Entry<String, ColumnValue> entity : columns.entrySet()) {
-                    KeyValue keyValue = resolveKey(entity.getKey(), entity.getValue(), row.getTimestamp(), vin);
-                    dataWriteByteBuffer.put(keyValue.getRowKey());
+                    KeyValue keyValue = resolveKey(entity.getKey(), entity.getValue());
                     dataWriteByteBuffer.put(keyValue.getColumnNameLength());
                     dataWriteByteBuffer.put(keyValue.getColumnName());
                     dataWriteByteBuffer.put(keyValue.getValueType());
@@ -111,31 +125,27 @@ public class FlushRequestTask extends Thread {
                 IndexBlock indexBlock = new IndexBlock();
                 indexBlock.setOffset(position + dataWriteFileChanel.position());
                 indexBlock.setTimestamp(row.getTimestamp());
-                indexBlock.setIndex(index);
+                indexBlock.setIndex((byte) dataFileChannelPear.getIndex());
                 indexBlock.setDataSize(p1 - position);
-                byte[] tableNameBytes = tableName.getBytes();
-                indexBlock.setTableNameLength((byte) tableNameBytes.length);
-                indexBlock.setTableName(tableNameBytes);
                 indexBlock.setRowKey(vin.getVin());
 
                 indexWriteByteBuffer.put(indexBlock.getIndexBlockLength());
                 indexWriteByteBuffer.putLong(indexBlock.getOffset());
                 indexWriteByteBuffer.putLong(indexBlock.getTimestamp());
-                indexWriteByteBuffer.put(index);
+                indexWriteByteBuffer.put((byte) dataFileChannelPear.getIndex());
                 indexWriteByteBuffer.putInt(indexBlock.getDataSize());
-                indexWriteByteBuffer.put(indexBlock.getTableNameLength());
-                indexWriteByteBuffer.put(indexBlock.getTableName());
                 indexWriteByteBuffer.put(indexBlock.getRowKey());
 
                 IndexBufferHandler.offerIndex(tableName, indexBlock);
             }
+
+            dataWriteByteBuffer.flip();
+            dataWriteFileChanel.write(dataWriteByteBuffer);
+            dataWriteFileChanel.force(false);
+            indexWriteByteBuffer.flip();
+            indexWriteFileChanel.write(indexWriteByteBuffer);
+            indexWriteFileChanel.force(false);
         }
-        dataWriteByteBuffer.flip();
-        dataWriteFileChanel.write(dataWriteByteBuffer);
-        dataWriteFileChanel.force(false);
-        indexWriteByteBuffer.flip();
-        indexWriteFileChanel.write(indexWriteByteBuffer);
-        indexWriteFileChanel.force(false);
 
         iterator = writeRequestWrapperList.iterator();
         while (iterator.hasNext()) {
@@ -149,11 +159,8 @@ public class FlushRequestTask extends Thread {
         indexWriteByteBuffer.clear();
     }
 
-    private KeyValue resolveKey(String columnNameStr, ColumnValue columnValue, long timestamp, Vin vin) {
+    private KeyValue resolveKey(String columnNameStr, ColumnValue columnValue) {
         KeyValue keyValue = new KeyValue();
-
-        byte[] rowKey = vin.getVin();
-        keyValue.setRowKey(rowKey);
 
         byte[] columnName = columnNameStr.getBytes();
         int columnNameLength = columnName.length;
@@ -165,5 +172,26 @@ public class FlushRequestTask extends Thread {
         keyValue.setColumnValue(columnValue);
 
         return keyValue;
+    }
+
+    public static class FileChannelPear {
+        private int index;
+        private FileChannel fileChannel;
+
+        public int getIndex() {
+            return index;
+        }
+
+        public void setIndex(int index) {
+            this.index = index;
+        }
+
+        public FileChannel getFileChannel() {
+            return fileChannel;
+        }
+
+        public void setFileChannel(FileChannel fileChannel) {
+            this.fileChannel = fileChannel;
+        }
     }
 }

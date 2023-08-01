@@ -5,12 +5,10 @@ public class IndexBlock {
     private long timestamp;
     private byte index;
     private int dataSize;
-    private byte tableNameLength;
-    private byte[] tableName;
     private byte[] rowKey;
 
     public byte getIndexBlockLength() {
-        return (byte) (8 + 8 + 1 + 4 + 1 + tableName.length + rowKey.length);
+        return (byte) (8 + 8 + 1 + 4 + rowKey.length);
     }
 
     public long getOffset() {
@@ -43,22 +41,6 @@ public class IndexBlock {
 
     public void setDataSize(int dataSize) {
         this.dataSize = dataSize;
-    }
-
-    public byte getTableNameLength() {
-        return tableNameLength;
-    }
-
-    public void setTableNameLength(byte tableNameLength) {
-        this.tableNameLength = tableNameLength;
-    }
-
-    public byte[] getTableName() {
-        return tableName;
-    }
-
-    public void setTableName(byte[] tableName) {
-        this.tableName = tableName;
     }
 
     public byte[] getRowKey() {

@@ -42,7 +42,7 @@ public class IndexResolveTask extends Thread {
                         size++;
                         byte[] poll = notice.getIndexDataByte();
                         if (poll != null && poll.length > 0) {
-                            resolve(poll);
+                            resolve(notice.getTableName(), poll);
                         }
                     }
                 }
@@ -56,7 +56,7 @@ public class IndexResolveTask extends Thread {
         }
     }
 
-    public void resolve(byte[] indexByteList) {
+    public void resolve(String tableName, byte[] indexByteList) {
         int i = 0;
         IndexBlock indexBlock = new IndexBlock();
 
@@ -88,17 +88,6 @@ public class IndexResolveTask extends Thread {
         indexBlock.setDataSize(dataSize);
         i = i + 4;
 
-        byte tableNameLength = indexByteList[i];
-        indexBlock.setTableNameLength(tableNameLength);
-        i = i + 1;
-
-        byte[] tableName = new byte[tableNameLength];
-        for (int j = i; j < i + tableNameLength; j++) {
-            tableName[j - i] = indexByteList[j];
-        }
-        indexBlock.setTableName(tableName);
-        i = i + tableNameLength;
-
         int rowKeyLength = Vin.VIN_LENGTH;
         byte[] rowKey = new byte[rowKeyLength];
         for (int j = i; j < i + rowKeyLength; j++) {
@@ -106,6 +95,6 @@ public class IndexResolveTask extends Thread {
         }
         indexBlock.setRowKey(rowKey);
 
-        IndexBufferHandler.offerIndex(new String(tableName), indexBlock);
+        IndexBufferHandler.offerIndex(tableName, indexBlock);
     }
 }

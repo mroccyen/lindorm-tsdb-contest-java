@@ -1,8 +1,8 @@
 package com.alibaba.lindorm.contest.impl;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -18,12 +18,23 @@ public class HandleRequestTask extends Thread {
 
     private boolean stop = false;
 
-    public HandleRequestTask(Map<Integer, File> dpFileMap, Map<Integer, File> ipFileMap) throws IOException {
-        for (Map.Entry<Integer, File> e : dpFileMap.entrySet()) {
-            FlushRequestTask flushRequestTask = new FlushRequestTask(this, e.getValue(), ipFileMap.get(e.getKey()), e.getKey().byteValue());
-            flushRequestTask.setName("FlushRequestTask-" + e.getKey());
-            flushRequestTask.start();
+    public HandleRequestTask(Map<String, Map<Integer, FileManager.FilePear>> fileMap) throws IOException {
+        Map<Integer, FlushRequestTask> flushRequestTaskMap = new HashMap<>();
+        for (Integer i = 0; i < CommonSetting.DATA_FILE_COUNT; i++) {
+            FlushRequestTask flushRequestTask = new FlushRequestTask(this);
+            flushRequestTask.setName("FlushRequestTask-" + i);
+            flushRequestTaskMap.put(i, flushRequestTask);
             flushRequestTaskList.add(flushRequestTask);
+        }
+        for (Map.Entry<String, Map<Integer, FileManager.FilePear>> mapEntry : fileMap.entrySet()) {
+            String tableName = mapEntry.getKey();
+            for (Map.Entry<Integer, FileManager.FilePear> e : mapEntry.getValue().entrySet()) {
+                FlushRequestTask flushRequestTask = flushRequestTaskMap.get(e.getKey());
+                flushRequestTask.addFileChannel(tableName, e.getValue().getDpFile(), e.getValue().getIpFile(), e.getKey());
+            }
+        }
+        for (Map.Entry<Integer, FlushRequestTask> entry : flushRequestTaskMap.entrySet()) {
+            entry.getValue().start();
         }
     }
 
