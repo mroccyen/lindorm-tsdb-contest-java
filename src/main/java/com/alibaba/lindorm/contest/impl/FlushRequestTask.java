@@ -145,6 +145,9 @@ public class FlushRequestTask extends Thread {
             indexWriteByteBuffer.flip();
             indexWriteFileChanel.write(indexWriteByteBuffer);
             indexWriteFileChanel.force(false);
+
+            dataWriteByteBuffer.clear();
+            indexWriteByteBuffer.clear();
         }
 
         iterator = writeRequestWrapperList.iterator();
@@ -154,9 +157,6 @@ public class FlushRequestTask extends Thread {
             writeRequestWrapper.getCondition().signal();
             writeRequestWrapper.getLock().unlock();
         }
-
-        dataWriteByteBuffer.clear();
-        indexWriteByteBuffer.clear();
     }
 
     private KeyValue resolveKey(String columnNameStr, ColumnValue columnValue) {
