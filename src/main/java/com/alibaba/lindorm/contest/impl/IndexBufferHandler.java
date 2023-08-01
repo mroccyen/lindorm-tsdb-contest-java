@@ -69,7 +69,7 @@ public class IndexBufferHandler {
 
                     IndexLoadCompleteNotice notice = new IndexLoadCompleteNotice();
                     notice.setComplete(false);
-                    notice.setTableName("");
+                    notice.setTableName(mapEntry.getKey());
                     notice.setIndexDataByte(indexDataByte);
                     try {
                         indexResolveTask.getWriteRequestQueue().put(notice);
