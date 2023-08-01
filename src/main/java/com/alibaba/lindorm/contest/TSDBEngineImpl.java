@@ -20,7 +20,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 public class TSDBEngineImpl extends TSDBEngine {
-
     private final static ThreadLocal<WriteRequestWrapper> WRITE_REQUEST_THREAD_LOCAL = ThreadLocal.withInitial(WriteRequestWrapper::new);
 
     private HandleRequestTask writeTask;
@@ -30,6 +29,8 @@ public class TSDBEngineImpl extends TSDBEngine {
     private final HashMap<String, Schema> tableSchema = new HashMap<>();
 
     private QueryHandler queryHandler;
+
+    private FileManager fileManager;
 
     /**
      * This constructor's function signature should not be modified.
@@ -45,15 +46,19 @@ public class TSDBEngineImpl extends TSDBEngine {
         indexResolveTask = new IndexResolveTask();
         indexResolveTask.setName("IndexResolveTask");
         indexResolveTask.start();
-        FileManager fileManager = new FileManager(getDataPath());
-        //加载索引信息
-        IndexBufferHandler.initIndexBuffer(fileManager.getIpFileMap(), indexResolveTask);
-        //开启写入任务
-        writeTask = new HandleRequestTask(fileManager.getDpFileMap(), fileManager.getIpFileMap());
-        writeTask.setName("HandleRequestTask");
-        writeTask.start();
+        //初始化文件管理
+        fileManager = new FileManager(getDataPath());
+        //如果存在文件
+        if (fileManager.hasFiles()) {
+            //加载索引信息
+            IndexBufferHandler.initIndexBuffer(fileManager.getIpFileMap(), indexResolveTask);
+            //开启写入任务
+            writeTask = new HandleRequestTask(fileManager.getDpFileMap(), fileManager.getIpFileMap());
+            writeTask.setName("HandleRequestTask");
+            writeTask.start();
+        }
         //初始化数据查询处理器
-        queryHandler = new QueryHandler(fileManager.getDpFileMap());
+        queryHandler = new QueryHandler(fileManager);
         System.out.println(">>> connect complete");
     }
 
@@ -61,6 +66,14 @@ public class TSDBEngineImpl extends TSDBEngine {
     public void createTable(String tableName, Schema schema) throws IOException {
         //缓存表元数据信息
         tableSchema.put(tableName, schema);
+        fileManager.createFile(tableName);
+        //如果存在文件
+        if (fileManager.hasFiles()) {
+            //开启写入任务
+            writeTask = new HandleRequestTask(fileManager.getDpFileMap(), fileManager.getIpFileMap());
+            writeTask.setName("HandleRequestTask");
+            writeTask.start();
+        }
         System.out.println(">>> createTable complete");
     }
 

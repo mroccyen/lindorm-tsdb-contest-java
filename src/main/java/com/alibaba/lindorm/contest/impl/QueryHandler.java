@@ -14,10 +14,10 @@ import java.util.stream.Collectors;
 import static java.nio.file.StandardOpenOption.READ;
 
 public class QueryHandler {
-    private final Map<Integer, File> dpFileMap;
+    private final FileManager fileManager;
 
-    public QueryHandler(Map<Integer, File> dpFileMap) {
-        this.dpFileMap = dpFileMap;
+    public QueryHandler(FileManager fileManager) {
+        this.fileManager = fileManager;
     }
 
     public ArrayList<Row> executeLatestQuery(LatestQueryRequest pReadReq) throws IOException {
@@ -96,7 +96,7 @@ public class QueryHandler {
         }
 
         Map<Integer, FileChannel> fileChannelMap = new TreeMap<>();
-        for (Map.Entry<Integer, File> fileEntry : dpFileMap.entrySet()) {
+        for (Map.Entry<Integer, File> fileEntry : fileManager.getDpFileMap().entrySet()) {
             FileChannel fileChannel = FileChannel.open(fileEntry.getValue().toPath(), READ);
             fileChannelMap.put(fileEntry.getKey(), fileChannel);
         }
