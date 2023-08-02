@@ -10,6 +10,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
 
 public class FlushRequestTask extends Thread {
     private final ByteBuffer dataWriteByteBuffer;
@@ -20,7 +21,7 @@ public class FlushRequestTask extends Thread {
     public FlushRequestTask(FileManager fileManager, HandleRequestTask handleRequestTask) {
         this.handleRequestTask = handleRequestTask;
         this.fileManager = fileManager;
-        //10M
+        //每个线程有10M缓冲区用于写数据
         dataWriteByteBuffer = ByteBuffer.allocateDirect(1024 * 1024 * 10);
     }
 
@@ -57,32 +58,41 @@ public class FlushRequestTask extends Thread {
             String tableName = writeRequest.getTableName();
             Collection<Row> rows = writeRequest.getRows();
             for (Row row : rows) {
-                Map<String, ColumnValue> columns = row.getColumns();
                 Vin vin = row.getVin();
+                //获得写文件锁
+                Lock writeLock = fileManager.getWriteLock(tableName, vin);
+                writeLock.lock();
+
                 FileChannel dataWriteFileChanel = fileManager.getWriteFilChannel(tableName, vin);
-                int position = dataWriteByteBuffer.position();
-                for (Map.Entry<String, ColumnValue> entity : columns.entrySet()) {
-                    KeyValue keyValue = resolveKey(entity.getKey(), entity.getValue());
-                    dataWriteByteBuffer.put(keyValue.getColumnNameLength());
-                    dataWriteByteBuffer.put(keyValue.getColumnName());
-                    dataWriteByteBuffer.put(keyValue.getValueType());
-                    dataWriteByteBuffer.putInt(keyValue.getValueLength());
-                    if (keyValue.getColumnType().equals(ColumnValue.ColumnType.COLUMN_TYPE_STRING)) {
-                        dataWriteByteBuffer.put(keyValue.getByteBufferValue());
-                    }
-                    if (keyValue.getColumnType().equals(ColumnValue.ColumnType.COLUMN_TYPE_INTEGER)) {
-                        dataWriteByteBuffer.putInt(keyValue.getIntegerValue());
-                    }
-                    if (keyValue.getColumnType().equals(ColumnValue.ColumnType.COLUMN_TYPE_DOUBLE_FLOAT)) {
-                        dataWriteByteBuffer.putDouble(keyValue.getDoubleValue());
+                SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
+                long position = dataWriteFileChanel.position();
+                //vin has 17 byte
+                dataWriteByteBuffer.put(vin.getVin());
+                dataWriteByteBuffer.putLong(row.getTimestamp());
+                for (int i = 0; i < schemaMeta.getColumnsNum(); ++i) {
+                    String cName = schemaMeta.getColumnsName().get(i);
+                    ColumnValue cVal = row.getColumns().get(cName);
+                    switch (cVal.getColumnType()) {
+                        case COLUMN_TYPE_STRING:
+                            ColumnValue.StringColumn stringColumn = (ColumnValue.StringColumn) cVal;
+                            dataWriteByteBuffer.putInt(stringColumn.getStringValue().remaining());
+                            dataWriteByteBuffer.put(stringColumn.getStringValue());
+                            break;
+                        case COLUMN_TYPE_INTEGER:
+                            ColumnValue.IntegerColumn integerColumn = (ColumnValue.IntegerColumn) cVal;
+                            dataWriteByteBuffer.putInt(integerColumn.getIntegerValue());
+                            break;
+                        case COLUMN_TYPE_DOUBLE_FLOAT:
+                            ColumnValue.DoubleFloatColumn doubleFloatColumn = (ColumnValue.DoubleFloatColumn) cVal;
+                            dataWriteByteBuffer.putDouble(doubleFloatColumn.getDoubleFloatValue());
+                            break;
+                        default:
+                            throw new IllegalStateException("Invalid column type");
                     }
                 }
-                int p1 = dataWriteByteBuffer.position();
-                IndexBlock indexBlock = new IndexBlock();
-                indexBlock.setOffset(position + dataWriteFileChanel.position());
-                indexBlock.setTimestamp(row.getTimestamp());
-                indexBlock.setDataSize(p1 - position);
-                indexBlock.setRowKey(vin.getVin());
+                Index index = new Index();
+                index.setOffset(position);
+                index.setRowKey(vin.getVin());
 
                 //刷盘
                 dataWriteByteBuffer.flip();
@@ -91,27 +101,14 @@ public class FlushRequestTask extends Thread {
 
                 dataWriteByteBuffer.clear();
                 //add index
-                IndexBufferLoader.offerIndex(tableName, indexBlock);
+                IndexLoader.offerIndex(tableName, row.getTimestamp(), index);
                 //释放锁让写线程返回
                 writeRequestWrapper.getLock().lock();
                 writeRequestWrapper.getCondition().signal();
                 writeRequestWrapper.getLock().unlock();
+                //释放写文件锁
+                writeLock.unlock();
             }
         }
-    }
-
-    private KeyValue resolveKey(String columnNameStr, ColumnValue columnValue) {
-        KeyValue keyValue = new KeyValue();
-
-        byte[] columnName = columnNameStr.getBytes();
-        int columnNameLength = columnName.length;
-        keyValue.setColumnName(columnName);
-        keyValue.setColumnNameLength((byte) columnNameLength);
-
-        ColumnValue.ColumnType columnType = columnValue.getColumnType();
-        keyValue.setColumnType(columnType);
-        keyValue.setColumnValue(columnValue);
-
-        return keyValue;
     }
 }

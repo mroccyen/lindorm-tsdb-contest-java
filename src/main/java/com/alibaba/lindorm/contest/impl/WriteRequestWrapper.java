@@ -1,14 +1,11 @@
 package com.alibaba.lindorm.contest.impl;
 
-import com.alibaba.lindorm.contest.structs.Schema;
 import com.alibaba.lindorm.contest.structs.WriteRequest;
 
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class WriteRequestWrapper {
-    private Schema schema;
-
     private WriteRequest writeRequest;
 
     private ReentrantLock lock;
@@ -24,10 +21,6 @@ public class WriteRequestWrapper {
         this.writeRequest = writeRequest;
     }
 
-    public void bingSchema(Schema schema) {
-        this.schema = schema;
-    }
-
     public WriteRequest getWriteRequest() {
         return writeRequest;
     }
@@ -38,9 +31,5 @@ public class WriteRequestWrapper {
 
     public Condition getCondition() {
         return condition;
-    }
-
-    public Schema getSchema() {
-        return schema;
     }
 }

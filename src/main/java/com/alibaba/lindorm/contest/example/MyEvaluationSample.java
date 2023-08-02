@@ -59,9 +59,15 @@ public class MyEvaluationSample {
         TSDBEngineImpl tsdbEngineSample = new TSDBEngineImpl(dataDir);
 
         try {
+            Map<String, ColumnValue.ColumnType> cols = new HashMap<>();
+            cols.put("col1", ColumnValue.ColumnType.COLUMN_TYPE_INTEGER);
+            cols.put("col2", ColumnValue.ColumnType.COLUMN_TYPE_DOUBLE_FLOAT);
+            cols.put("col3", ColumnValue.ColumnType.COLUMN_TYPE_STRING);
+            Schema schema = new Schema(cols);
+
             // Stage1: write
             tsdbEngineSample.connect();
-            tsdbEngineSample.createTable("test", null);
+            tsdbEngineSample.createTable("test", schema);
 
             ByteBuffer buffer = ByteBuffer.allocate(3);
             buffer.put((byte) 70);
@@ -69,17 +75,12 @@ public class MyEvaluationSample {
             buffer.put((byte) 72);
             Map<String, ColumnValue> columns1 = new HashMap<>();
             columns1.put("col1", new ColumnValue.IntegerColumn(123));
-
-            Map<String, ColumnValue> columns2 = new HashMap<>();
-            columns2.put("col2", new ColumnValue.DoubleFloatColumn(1.23));
-            columns2.put("col3", new ColumnValue.StringColumn(buffer));
+            columns1.put("col2", new ColumnValue.DoubleFloatColumn(1.23));
+            columns1.put("col3", new ColumnValue.StringColumn(buffer));
             String str = "12345678912345678";
             ArrayList<Row> rowList = new ArrayList<>();
 
-            rowList.add(new Row(new Vin(str.getBytes(StandardCharsets.UTF_8)), 33, columns1));
-            tsdbEngineSample.upsert(new WriteRequest("test", rowList));
-
-            rowList.add(new Row(new Vin(str.getBytes(StandardCharsets.UTF_8)), 28, columns2));
+            rowList.add(new Row(new Vin(str.getBytes(StandardCharsets.UTF_8)), 0, columns1));
             tsdbEngineSample.upsert(new WriteRequest("test", rowList));
 
             //read

@@ -59,6 +59,12 @@ public class EvaluationSample {
     TSDBEngineSample tsdbEngineSample = new TSDBEngineSample(dataDir);
 
     try {
+      Map<String, ColumnValue.ColumnType> cols = new HashMap<>();
+      cols.put("col1", ColumnValue.ColumnType.COLUMN_TYPE_INTEGER);
+      cols.put("col2", ColumnValue.ColumnType.COLUMN_TYPE_DOUBLE_FLOAT);
+      cols.put("col3", ColumnValue.ColumnType.COLUMN_TYPE_STRING);
+      Schema schema = new Schema(cols);
+
       // Stage1: write
       tsdbEngineSample.connect();
 
@@ -74,7 +80,7 @@ public class EvaluationSample {
       ArrayList<Row> rowList = new ArrayList<>();
       rowList.add(new Row(new Vin(str.getBytes(StandardCharsets.UTF_8)), 1, columns));
 
-      tsdbEngineSample.createTable("test", null);
+      tsdbEngineSample.createTable("test", schema);
       tsdbEngineSample.upsert(new WriteRequest("test", rowList));
 
       tsdbEngineSample.shutdown();

@@ -5,20 +5,21 @@ import com.alibaba.lindorm.contest.structs.*;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-public class QueryHandler {
+public class DataQueryHandler {
     private final FileManager fileManager;
 
-    public QueryHandler(FileManager fileManager) {
+    public DataQueryHandler(FileManager fileManager) {
         this.fileManager = fileManager;
     }
 
     public ArrayList<Row> executeLatestQuery(LatestQueryRequest pReadReq) throws IOException {
-        ConcurrentHashMap<String, BTree<Long>> indexBlockMap = IndexBufferLoader.getIndexBlockMap(pReadReq.getTableName());
+        ConcurrentHashMap<String, BTree<Long>> indexBlockMap = IndexLoader.getIndexBlockMap(pReadReq.getTableName());
         int size = indexBlockMap.size();
         //System.out.println(">>> executeLatestQuery " + pReadReq.getTableName() + " exist index data size: " + size);
         long start = System.currentTimeMillis();
@@ -41,7 +42,7 @@ public class QueryHandler {
     }
 
     public ArrayList<Row> executeTimeRangeQuery(TimeRangeQueryRequest trReadReq) throws IOException {
-        ConcurrentHashMap<String, BTree<Long>> indexBlockMap = IndexBufferLoader.getIndexBlockMap(trReadReq.getTableName());
+        ConcurrentHashMap<String, BTree<Long>> indexBlockMap = IndexLoader.getIndexBlockMap(trReadReq.getTableName());
         int size = indexBlockMap.size();
         //System.out.println(">>> executeTimeRangeQuery " + trReadReq.getTableName() + " exist index data size: " + size);
         long start = System.currentTimeMillis();
@@ -65,11 +66,11 @@ public class QueryHandler {
 
     private ArrayList<Row> query(String tableName, Collection<Vin> vinList, Set<String> requestedColumns, long timeLowerBound, long timeUpperBound) throws IOException {
         //获取当前表所有的索引信息
-        ConcurrentHashMap<String, BTree<Long>> indexBlockMap = IndexBufferLoader.getIndexBlockMap(tableName);
+        ConcurrentHashMap<String, BTree<Long>> indexBlockMap = IndexLoader.getIndexBlockMap(tableName);
 
         //先过滤数据
-        List<IndexBlock> queryLatestList = new ArrayList<>();
-        Map<String, IndexBlock> queryRangeMap = new HashMap<>();
+        List<Index> queryLatestList = new ArrayList<>();
+        Map<String, Index> queryRangeMap = new HashMap<>();
         for (Vin vin : vinList) {
             String rowKey = new String(vin.getVin());
             BTree<Long> tree = indexBlockMap.get(rowKey);
@@ -78,81 +79,70 @@ public class QueryHandler {
                 if (timeLowerBound != -1 && timeUpperBound != -1) {
                     List<Object> list = tree.searchRange(timeLowerBound, timeUpperBound);
                     for (Object o : list) {
-                        queryLatestList.add((IndexBlock) o);
+                        queryLatestList.add((Index) o);
                     }
                 } else {
-                    queryRangeMap.put(rowKey, (IndexBlock) tree.searchMax(Long.MAX_VALUE));
+                    queryRangeMap.put(rowKey, (Index) tree.searchMax(Long.MAX_VALUE));
                 }
             }
         }
-        List<IndexBlock> r;
+        List<Index> r;
         if (queryRangeMap.size() > 0) {
             r = new ArrayList<>(queryRangeMap.values());
         } else {
             r = queryLatestList;
         }
 
-        Map<Integer, FileChannel> fileChannelMap = fileManager.getFileMap().get(tableName);
+        Map<Integer, FileChannel> fileChannelMap = fileManager.getReadFileMap().get(tableName);
+        SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
         Map<String, Vin> vinNameMap = vinList.stream().collect(Collectors.toMap(i -> new String(i.getVin()), i -> i));
         ArrayList<Row> rowList = new ArrayList<>();
-        for (IndexBlock indexBlock : r) {
-            String rowKeyName = new String(indexBlock.getRowKey());
-            Map<String, ColumnValue> columns = new HashMap<>();
+        for (Index index : r) {
+            String rowKeyName = new String(index.getRowKey());
             if (vinNameMap.containsKey(rowKeyName)) {
                 Vin vin = vinNameMap.get(rowKeyName);
-                long t = indexBlock.getTimestamp();
-
-                ByteBuffer sizeByteBuffer = ByteBuffer.allocateDirect(indexBlock.getDataSize());
-                FileChannel fileChannel = fileChannelMap.get((int) indexBlock.getIndex());
+                int folderIndex = vin.hashCode() % CommonSetting.NUM_FOLDERS;
+                FileChannel fileChannel = fileChannelMap.get(folderIndex);
                 if (fileChannel.size() == 0) {
                     continue;
                 }
-                fileChannel.read(sizeByteBuffer, indexBlock.getOffset());
-                sizeByteBuffer.flip();
-                int bufferPosition = sizeByteBuffer.position();
-                int bufferLimit = sizeByteBuffer.limit();
-                while (bufferPosition < bufferLimit) {
-                    int columnNameLength = sizeByteBuffer.get();
-                    byte[] columnName = new byte[columnNameLength];
-                    for (int i = 0; i < columnNameLength; i++) {
-                        columnName[i] = sizeByteBuffer.get();
-                    }
-                    String existColumnName = new String(columnName);
-                    byte valueType = sizeByteBuffer.get();
-                    int valueLength = sizeByteBuffer.getInt();
-                    if (valueType == 1) {
-                        byte[] valueBytes = new byte[valueLength];
-                        for (int i = 0; i < valueLength; i++) {
-                            valueBytes[i] = sizeByteBuffer.get();
+                MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
+                while (sizeByteBuffer.hasRemaining()) {
+                    long t = sizeByteBuffer.getLong();
+                    Map<String, ColumnValue> columns = new HashMap<>();
+
+                    for (int cI = 0; cI < schemaMeta.getColumnsNum(); ++cI) {
+                        String cName = schemaMeta.getColumnsName().get(cI);
+                        ColumnValue.ColumnType cType = schemaMeta.getColumnsType().get(cI);
+                        ColumnValue cVal;
+                        switch (cType) {
+                            case COLUMN_TYPE_INTEGER:
+                                int intVal = sizeByteBuffer.getInt();
+                                cVal = new ColumnValue.IntegerColumn(intVal);
+                                break;
+                            case COLUMN_TYPE_DOUBLE_FLOAT:
+                                double doubleVal = sizeByteBuffer.getDouble();
+                                cVal = new ColumnValue.DoubleFloatColumn(doubleVal);
+                                break;
+                            case COLUMN_TYPE_STRING:
+                                int length = sizeByteBuffer.getInt();
+                                byte[] bytes = new byte[length];
+                                for (int i = 0; i < length; i++) {
+                                    bytes[i] = sizeByteBuffer.get();
+                                }
+                                cVal = new ColumnValue.StringColumn(ByteBuffer.wrap(bytes));
+                                break;
+                            default:
+                                throw new IllegalStateException("Undefined column type, this is not expected");
                         }
-                        if (requestedColumns.contains(existColumnName)) {
-                            columns.put(existColumnName, new ColumnValue.StringColumn(ByteBuffer.wrap(valueBytes)));
-                        }
+                        columns.put(cName, cVal);
                     }
-                    if (valueType == 2) {
-                        int value = sizeByteBuffer.getInt();
-                        if (requestedColumns.contains(existColumnName)) {
-                            columns.put(existColumnName, new ColumnValue.IntegerColumn(value));
-                        }
-                    }
-                    if (valueType == 3) {
-                        double value = sizeByteBuffer.getDouble();
-                        if (requestedColumns.contains(existColumnName)) {
-                            columns.put(existColumnName, new ColumnValue.DoubleFloatColumn(value));
-                        }
-                    }
-                    bufferPosition = sizeByteBuffer.position();
-                    bufferLimit = sizeByteBuffer.limit();
+                    //构建Row
+                    Row row = new Row(vin, t, columns);
+                    rowList.add(row);
                 }
-                //构建Row
-                Row row = new Row(vin, t, columns);
-                rowList.add(row);
             }
         }
-        for (Map.Entry<Integer, FileChannel> fileChannelEntry : fileChannelMap.entrySet()) {
-            fileChannelEntry.getValue().close();
-        }
-
         return rowList;
     }
 }

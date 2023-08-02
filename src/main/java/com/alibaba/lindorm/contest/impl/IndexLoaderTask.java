@@ -1,12 +1,10 @@
 package com.alibaba.lindorm.contest.impl;
 
-import com.alibaba.lindorm.contest.structs.Vin;
-
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-public class IndexResolveTask extends Thread {
+public class IndexLoaderTask extends Thread {
     private final BlockingQueue<IndexLoadCompleteNotice> writeRequestQueue = new ArrayBlockingQueue<>(50);
 
     private boolean stop = false;
@@ -40,10 +38,10 @@ public class IndexResolveTask extends Thread {
                         System.out.println(">>> IndexResolveTask load index data size: " + size);
                     } else {
                         size++;
-                        byte[] poll = notice.getIndexDataByte();
-                        if (poll != null && poll.length > 0) {
-                            resolve(notice.getTableName(), poll);
-                        }
+                        Index index = new Index();
+                        index.setOffset(notice.getOffset());
+                        index.setRowKey(notice.getVin());
+                        IndexLoader.offerIndex(notice.getTableName(), notice.getTimestamp(), index);
                     }
                 }
             } catch (Exception e) {
@@ -54,47 +52,5 @@ public class IndexResolveTask extends Thread {
                 System.exit(-1);
             }
         }
-    }
-
-    public void resolve(String tableName, byte[] indexByteList) {
-        int i = 0;
-        IndexBlock indexBlock = new IndexBlock();
-
-        byte[] offsetByte = new byte[8];
-        for (int j = i; j < i + 8; j++) {
-            offsetByte[j - i] = indexByteList[j];
-        }
-        long offset = ByteArrayUtil.byteArray2Long_Big_Endian(offsetByte);
-        indexBlock.setOffset(offset);
-        i = i + 8;
-
-        byte[] timeStampByte = new byte[8];
-        for (int j = i; j < i + 8; j++) {
-            timeStampByte[j - i] = indexByteList[j];
-        }
-        long timeStamp = ByteArrayUtil.byteArray2Long_Big_Endian(timeStampByte);
-        indexBlock.setTimestamp(timeStamp);
-        i = i + 8;
-
-        byte index = indexByteList[i];
-        i = i + 1;
-        indexBlock.setIndex(index);
-
-        byte[] dataSizeByte = new byte[4];
-        for (int j = i; j < i + 4; j++) {
-            dataSizeByte[j - i] = indexByteList[j];
-        }
-        int dataSize = ByteArrayUtil.byteArray2Int_Big_Endian(dataSizeByte);
-        indexBlock.setDataSize(dataSize);
-        i = i + 4;
-
-        int rowKeyLength = Vin.VIN_LENGTH;
-        byte[] rowKey = new byte[rowKeyLength];
-        for (int j = i; j < i + rowKeyLength; j++) {
-            rowKey[j - i] = indexByteList[j];
-        }
-        indexBlock.setRowKey(rowKey);
-
-        IndexBufferLoader.offerIndex(tableName, indexBlock);
     }
 }
