@@ -10,8 +10,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import static java.nio.file.StandardOpenOption.READ;
-
 public class QueryHandler {
     private final FileManager fileManager;
 
@@ -20,7 +18,7 @@ public class QueryHandler {
     }
 
     public ArrayList<Row> executeLatestQuery(LatestQueryRequest pReadReq) throws IOException {
-        ConcurrentHashMap<String, BTree<Long>> indexBlockMap = IndexBufferHandler.getIndexBlockMap(pReadReq.getTableName());
+        ConcurrentHashMap<String, BTree<Long>> indexBlockMap = IndexBufferLoader.getIndexBlockMap(pReadReq.getTableName());
         int size = indexBlockMap.size();
         //System.out.println(">>> executeLatestQuery " + pReadReq.getTableName() + " exist index data size: " + size);
         long start = System.currentTimeMillis();
@@ -43,7 +41,7 @@ public class QueryHandler {
     }
 
     public ArrayList<Row> executeTimeRangeQuery(TimeRangeQueryRequest trReadReq) throws IOException {
-        ConcurrentHashMap<String, BTree<Long>> indexBlockMap = IndexBufferHandler.getIndexBlockMap(trReadReq.getTableName());
+        ConcurrentHashMap<String, BTree<Long>> indexBlockMap = IndexBufferLoader.getIndexBlockMap(trReadReq.getTableName());
         int size = indexBlockMap.size();
         //System.out.println(">>> executeTimeRangeQuery " + trReadReq.getTableName() + " exist index data size: " + size);
         long start = System.currentTimeMillis();
@@ -67,7 +65,7 @@ public class QueryHandler {
 
     private ArrayList<Row> query(String tableName, Collection<Vin> vinList, Set<String> requestedColumns, long timeLowerBound, long timeUpperBound) throws IOException {
         //获取当前表所有的索引信息
-        ConcurrentHashMap<String, BTree<Long>> indexBlockMap = IndexBufferHandler.getIndexBlockMap(tableName);
+        ConcurrentHashMap<String, BTree<Long>> indexBlockMap = IndexBufferLoader.getIndexBlockMap(tableName);
 
         //先过滤数据
         List<IndexBlock> queryLatestList = new ArrayList<>();
@@ -94,12 +92,7 @@ public class QueryHandler {
             r = queryLatestList;
         }
 
-        Map<Integer, FileChannel> fileChannelMap = new TreeMap<>();
-        Map<Integer, FileManager.FilePear> map = fileManager.getFileMap().get(tableName);
-        for (Map.Entry<Integer, FileManager.FilePear> fileEntry : map.entrySet()) {
-            FileChannel fileChannel = FileChannel.open(fileEntry.getValue().getDpFile().toPath(), READ);
-            fileChannelMap.put(fileEntry.getKey(), fileChannel);
-        }
+        Map<Integer, FileChannel> fileChannelMap = fileManager.getFileMap().get(tableName);
         Map<String, Vin> vinNameMap = vinList.stream().collect(Collectors.toMap(i -> new String(i.getVin()), i -> i));
         ArrayList<Row> rowList = new ArrayList<>();
         for (IndexBlock indexBlock : r) {

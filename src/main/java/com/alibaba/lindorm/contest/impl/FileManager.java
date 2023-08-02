@@ -1,117 +1,73 @@
 package com.alibaba.lindorm.contest.impl;
 
+import com.alibaba.lindorm.contest.structs.Vin;
+
 import java.io.File;
 import java.io.IOException;
+import java.nio.channels.FileChannel;
 import java.util.HashMap;
 import java.util.Map;
 
+import static java.nio.file.StandardOpenOption.APPEND;
+
 public class FileManager {
-    private final Map<String, Map<Integer, FilePear>> fileMap = new HashMap<>();
+    private static final int NUM_FOLDERS = 300;
+    private final Map<String, Map<Integer, FileChannel>> fileMap = new HashMap<>();
     private final File dataPath;
 
     public FileManager(File dataPath) {
         this.dataPath = dataPath;
-        File[] files = dataPath.listFiles();
-        if (files == null) {
-            return;
-        }
-        for (File file : files) {
-            String tableName = file.getName();
-            File[] listFiles = file.listFiles();
-            if (listFiles != null) {
-                Map<Integer, FilePear> map = new HashMap<>(listFiles.length);
-                for (File listFile : listFiles) {
-                    String fileName = listFile.getName();
-                    String[] split = fileName.split("\\.");
-                    int i = 0;
-                    if (split[1].equals(CommonSetting.INDEX_EXT)) {
-                        String s = split[0];
-                        String[] ss = s.split("_");
-                        i = Integer.parseInt(ss[1]);
-                        FilePear f = map.get(i);
-                        if (f != null) {
-                            f.setIpFile(listFile);
-                        } else {
-                            FilePear filePear = new FilePear();
-                            filePear.setIpFile(listFile);
-                            map.put(i, filePear);
-                        }
-                    }
-                    if (split[1].equals(CommonSetting.DATA_EXT)) {
-                        String s = split[0];
-                        String[] ss = s.split("_");
-                        i = Integer.parseInt(ss[1]);
-                        FilePear f = map.get(i);
-                        if (f != null) {
-                            f.setDpFile(listFile);
-                        } else {
-                            FilePear filePear = new FilePear();
-                            filePear.setDpFile(listFile);
-                            map.put(i, filePear);
-                        }
-                    }
-                }
-                fileMap.put(tableName, map);
-            }
-        }
     }
 
-    public void createFile(String tableName) throws IOException {
+    public FileChannel getWriteFilChannel(String tableName, Vin vin) throws IOException {
+        int folderIndex = vin.hashCode() % NUM_FOLDERS;
+        Map<Integer, FileChannel> channelMap = fileMap.get(tableName);
+        if (channelMap != null) {
+            FileChannel channel = channelMap.get(folderIndex);
+            if (channel != null) {
+                return channel;
+            }
+        }
         String absolutePath = dataPath.getAbsolutePath();
-        String p = absolutePath + File.separator + tableName;
-        File tablePath = new File(p);
+        String folder = absolutePath + File.separator + tableName;
+        File tablePath = new File(folder);
         if (!tablePath.exists()) {
             tablePath.mkdir();
         }
-        Map<Integer, FilePear> map = new HashMap<>(CommonSetting.DATA_FILE_COUNT);
-        for (int i = 0; i < CommonSetting.DATA_FILE_COUNT; i++) {
-            FilePear filePear = new FilePear();
-
-            String dp = p + File.separator + CommonSetting.DATA_NAME + "_" + i + CommonSetting.DOT + CommonSetting.DATA_EXT;
-            File dpFile = new File(dp);
-            if (!dpFile.exists()) {
-                dpFile.createNewFile();
-            }
-            filePear.setDpFile(dpFile);
-
-            String ip = p + File.separator + CommonSetting.INDEX_NAME + "_" + i + CommonSetting.DOT + CommonSetting.INDEX_EXT;
-            File ipFile = new File(ip);
-            if (!ipFile.exists()) {
-                ipFile.createNewFile();
-            }
-            filePear.setIpFile(ipFile);
-
-            map.put(i, filePear);
+        String s = folder + File.separator + folderIndex;
+        File f = new File(s);
+        if (!f.exists()) {
+            f.createNewFile();
         }
-        fileMap.put(tableName, map);
+        synchronized (fileMap) {
+            //拿到锁后先查询一次，可能会出现之前有线程创建了
+            Map<Integer, FileChannel> fileChannelMap = fileMap.get(tableName);
+            if (fileChannelMap != null) {
+                synchronized (fileMap) {
+                    FileChannel channel = fileChannelMap.get(folderIndex);
+                    if (channel != null) {
+                        return channel;
+                    }
+                }
+            }
+            FileChannel fileChannel = FileChannel.open(f.toPath(), APPEND);
+            Map<Integer, FileChannel> map = fileMap.get(tableName);
+            if (map != null) {
+                map.put(folderIndex, fileChannel);
+            } else {
+                map = new HashMap<>();
+                map.put(folderIndex, fileChannel);
+                fileMap.put(tableName, map);
+            }
+            return fileChannel;
+        }
     }
 
-    public boolean hasFiles() {
-        return fileMap.size() > 0;
+    public void shutdown() {
+
     }
 
-    public Map<String, Map<Integer, FilePear>> getFileMap() {
+    public Map<String, Map<Integer, FileChannel>> getFileMap() {
         return fileMap;
-    }
-
-    public static class FilePear {
-        private File ipFile;
-        private File dpFile;
-
-        public File getIpFile() {
-            return ipFile;
-        }
-
-        public void setIpFile(File ipFile) {
-            this.ipFile = ipFile;
-        }
-
-        public File getDpFile() {
-            return dpFile;
-        }
-
-        public void setDpFile(File dpFile) {
-            this.dpFile = dpFile;
-        }
     }
 }

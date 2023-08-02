@@ -2,16 +2,13 @@ package com.alibaba.lindorm.contest.impl;
 
 import com.alibaba.lindorm.contest.impl.bpluse.BTree;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static java.nio.file.StandardOpenOption.READ;
-
-public class IndexBufferHandler {
+public class IndexBufferLoader {
     private static final ConcurrentHashMap<String, ConcurrentHashMap<String, BTree<Long>>> INDEX_CACHE_MAP = new ConcurrentHashMap<>();
 
     public static void offerIndex(String tableName, IndexBlock indexBlock) {
@@ -47,16 +44,16 @@ public class IndexBufferHandler {
         INDEX_CACHE_MAP.clear();
     }
 
-    public static void initIndexBuffer(Map<String, Map<Integer, FileManager.FilePear>> fileMap, IndexResolveTask indexResolveTask) throws IOException {
-        for (Map.Entry<String, Map<Integer, FileManager.FilePear>> mapEntry : fileMap.entrySet()) {
-            for (Map.Entry<Integer, FileManager.FilePear> ipFile : mapEntry.getValue().entrySet()) {
-                FileChannel fileChannel = FileChannel.open(ipFile.getValue().getIpFile().toPath(), READ);
+    public static void loadIndex(FileManager fileManager, IndexResolveTask indexResolveTask) throws IOException {
+        for (Map.Entry<String, Map<Integer, FileChannel>> mapEntry : fileManager.getFileMap().entrySet()) {
+            for (Map.Entry<Integer, FileChannel> fileChannelEntry : mapEntry.getValue().entrySet()) {
+                FileChannel fileChannel = fileChannelEntry.getValue();
                 if (fileChannel.size() == 0) {
-                    System.out.println(">>> initIndexBuffer file" + ipFile.getKey() + " no need load index data");
+                    System.out.println(">>> initIndexBuffer file" + fileChannelEntry.getKey() + " no need load index data");
                     continue;
                 }
-                System.out.println(">>> initIndexBuffer file" + ipFile.getKey() + " load exist index data begin");
-                System.out.println(">>> initIndexBuffer file" + ipFile.getKey() + " exist index file size: " + fileChannel.size());
+                System.out.println(">>> initIndexBuffer file" + fileChannelEntry.getKey() + " load exist index data begin");
+                System.out.println(">>> initIndexBuffer file" + fileChannelEntry.getKey() + " exist index file size: " + fileChannel.size());
                 MappedByteBuffer dataByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
                 long start = System.currentTimeMillis();
                 long size = 0;
@@ -79,7 +76,7 @@ public class IndexBufferHandler {
                     }
                     size++;
                 }
-                System.out.println(">>> initIndexBuffer file" + ipFile.getKey() + " offered index data size: " + size);
+                System.out.println(">>> initIndexBuffer file" + fileChannelEntry.getKey() + " offered index data size: " + size);
                 //关系通道
                 fileChannel.close();
 
@@ -101,8 +98,8 @@ public class IndexBufferHandler {
                 }
                 wrapper.getLock().unlock();
                 long end = System.currentTimeMillis();
-                System.out.println(">>> initIndexBuffer file" + ipFile.getKey() + " load exist index time: " + (end - start));
-                System.out.println(">>> initIndexBuffer file" + ipFile.getKey() + " load exist index data complete");
+                System.out.println(">>> initIndexBuffer file" + fileChannelEntry.getKey() + " load exist index time: " + (end - start));
+                System.out.println(">>> initIndexBuffer file" + fileChannelEntry.getKey() + " load exist index data complete");
             }
         }
     }

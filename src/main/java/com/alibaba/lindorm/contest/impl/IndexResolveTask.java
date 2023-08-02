@@ -95,6 +95,6 @@ public class IndexResolveTask extends Thread {
         }
         indexBlock.setRowKey(rowKey);
 
-        IndexBufferHandler.offerIndex(tableName, indexBlock);
+        IndexBufferLoader.offerIndex(tableName, indexBlock);
     }
 }
