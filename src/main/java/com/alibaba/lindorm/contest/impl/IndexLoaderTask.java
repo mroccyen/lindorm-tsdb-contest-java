@@ -35,7 +35,7 @@ public class IndexLoaderTask extends Thread {
                         indexLoadCompleteWrapper.getLock().lock();
                         indexLoadCompleteWrapper.getCondition().signal();
                         indexLoadCompleteWrapper.getLock().unlock();
-                        System.out.println(">>> IndexResolveTask load index data size: " + size);
+                        //System.out.println(">>> IndexResolveTask load index data size: " + size);
                     } else {
                         size++;
                         Index index = new Index();
