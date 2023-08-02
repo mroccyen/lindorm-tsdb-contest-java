@@ -50,7 +50,8 @@ public class IndexLoader {
         System.out.println(">>> initIndexBuffer load exist index data begin");
         long start = System.currentTimeMillis();
         for (Map.Entry<String, Map<Integer, FileChannel>> mapEntry : fileManager.getReadFileMap().entrySet()) {
-            SchemaMeta schemaMeta = fileManager.getSchemaMeta(mapEntry.getKey());
+            String tableName = mapEntry.getKey();
+            SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
             for (Map.Entry<Integer, FileChannel> fileChannelEntry : mapEntry.getValue().entrySet()) {
                 FileChannel fileChannel = fileChannelEntry.getValue();
                 if (fileChannel.size() == 0) {
@@ -61,7 +62,7 @@ public class IndexLoader {
                 while (dataByteBuffer.hasRemaining()) {
                     long p = 0;
                     byte[] vinByte = new byte[Vin.VIN_LENGTH];
-                    for (int i = 0; i < Vin.VIN_LENGTH + 8; i++) {
+                    for (int i = 0; i < Vin.VIN_LENGTH; i++) {
                         vinByte[i] = dataByteBuffer.get();
                     }
                     p = p + Vin.VIN_LENGTH;
@@ -92,6 +93,7 @@ public class IndexLoader {
                     }
                     IndexLoadCompleteNotice notice = new IndexLoadCompleteNotice();
                     notice.setComplete(false);
+                    notice.setTableName(tableName);
                     notice.setOffset(position);
                     notice.setTimestamp(timestamp);
                     notice.setVin(vinByte);

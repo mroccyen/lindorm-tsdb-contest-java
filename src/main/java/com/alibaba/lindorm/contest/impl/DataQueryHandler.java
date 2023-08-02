@@ -106,11 +106,16 @@ public class DataQueryHandler {
                 if (fileChannel.size() == 0) {
                     continue;
                 }
-                MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
+                ByteBuffer sizeByteBuffer = ByteBuffer.allocateDirect(1024 * 4);
+                fileChannel.read(sizeByteBuffer, index.getOffset());
+                sizeByteBuffer.flip();
                 while (sizeByteBuffer.hasRemaining()) {
+                    byte[] vinBytes = new byte[Vin.VIN_LENGTH];
+                    for (int i = 0; i < Vin.VIN_LENGTH; i++) {
+                        vinBytes[i] = sizeByteBuffer.get();
+                    }
                     long t = sizeByteBuffer.getLong();
                     Map<String, ColumnValue> columns = new HashMap<>();
-
                     for (int cI = 0; cI < schemaMeta.getColumnsNum(); ++cI) {
                         String cName = schemaMeta.getColumnsName().get(cI);
                         ColumnValue.ColumnType cType = schemaMeta.getColumnsType().get(cI);
@@ -135,11 +140,14 @@ public class DataQueryHandler {
                             default:
                                 throw new IllegalStateException("Undefined column type, this is not expected");
                         }
-                        columns.put(cName, cVal);
+                        if (requestedColumns.contains(cName)) {
+                            columns.put(cName, cVal);
+                        }
                     }
                     //构建Row
                     Row row = new Row(vin, t, columns);
                     rowList.add(row);
+                    break;
                 }
             }
         }

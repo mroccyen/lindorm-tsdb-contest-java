@@ -36,6 +36,9 @@ public class TSDBEngineImpl extends TSDBEngine {
         //初始化文件管理
         fileManager = new FileManager(getDataPath());
         fileManager.loadExistFile();
+        //表信息处理
+        schemaHandler = new SchemaHandler(fileManager, getDataPath());
+        schemaHandler.loadTableInfo();
         //加载索引信息
         indexLoaderTask = new IndexLoaderTask();
         indexLoaderTask.setName("IndexLoaderTask");
@@ -47,9 +50,6 @@ public class TSDBEngineImpl extends TSDBEngine {
         writeTask.start();
         //初始化数据查询处理器
         dataQueryHandler = new DataQueryHandler(fileManager);
-        //表信息处理
-        schemaHandler = new SchemaHandler(fileManager, getDataPath());
-        schemaHandler.loadTableInfo();
         System.out.println(">>> connect complete");
     }
 

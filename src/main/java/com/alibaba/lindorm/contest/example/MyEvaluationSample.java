@@ -131,7 +131,7 @@ public class MyEvaluationSample {
             tsdbEngineSample.upsert(new WriteRequest("test", rowList));
             ArrayList<Row> resultSet3 = tsdbEngineSample.executeLatestQuery(new LatestQueryRequest("test", vinList3, requestedColumns3));
             showResult(resultSet3);
-            resultSet3 = tsdbEngineSample.executeTimeRangeQuery(new TimeRangeQueryRequest("test", new Vin(str.getBytes(StandardCharsets.UTF_8)), requestedColumns3, 33, 34));
+            resultSet3 = tsdbEngineSample.executeTimeRangeQuery(new TimeRangeQueryRequest("test", new Vin(str2.getBytes(StandardCharsets.UTF_8)), requestedColumns3, 1, 3));
             showResult(resultSet3);
 
             tsdbEngineSample.shutdown();
