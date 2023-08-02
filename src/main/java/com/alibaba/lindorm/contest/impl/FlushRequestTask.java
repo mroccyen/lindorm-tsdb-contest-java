@@ -102,13 +102,13 @@ public class FlushRequestTask extends Thread {
                 dataWriteByteBuffer.clear();
                 //add index
                 IndexLoader.offerIndex(tableName, row.getTimestamp(), index);
-                //释放锁让写线程返回
-                writeRequestWrapper.getLock().lock();
-                writeRequestWrapper.getCondition().signal();
-                writeRequestWrapper.getLock().unlock();
                 //释放写文件锁
                 writeLock.unlock();
             }
+            //释放锁让写线程返回
+            writeRequestWrapper.getLock().lock();
+            writeRequestWrapper.getCondition().signal();
+            writeRequestWrapper.getLock().unlock();
         }
     }
 }
