@@ -6,11 +6,11 @@ import java.util.List;
 @SuppressWarnings("unchecked")
 public class BTree<K extends Comparable<K>> {
     // m阶B树
-    private final int m;
+    private final byte m;
     private BTNode root;
     private BTNode sqt;
 
-    public BTree(int m) {
+    public BTree(byte m) {
         if (m < 3) {
             throw new ExceptionInInitializerError("m is too small: at least 3");
         }

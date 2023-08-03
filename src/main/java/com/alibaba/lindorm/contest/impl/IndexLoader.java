@@ -21,13 +21,13 @@ public class IndexLoader {
                 BTree<Long> tree = map.get(rowKey);
                 tree.insert(timestamp, index);
             } else {
-                BTree<Long> tree = new BTree<>(30);
+                BTree<Long> tree = new BTree<>((byte) 30);
                 tree.insert(timestamp, index);
                 map.put(rowKey, tree);
             }
         } else {
             ConcurrentHashMap<String, BTree<Long>> map = new ConcurrentHashMap<>();
-            BTree<Long> tree = new BTree<>(30);
+            BTree<Long> tree = new BTree<>((byte) 30);
             tree.insert(timestamp, index);
             map.put(rowKey, tree);
             INDEX_CACHE_MAP.put(tableName, map);

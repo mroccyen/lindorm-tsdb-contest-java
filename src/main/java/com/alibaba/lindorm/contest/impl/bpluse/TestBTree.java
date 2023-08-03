@@ -37,7 +37,7 @@ public class TestBTree {
 //        bt.print();
 //        bt.printKeysInorder();
 
-        BTree<Long> bt = new BTree<>(30);
+        BTree<Long> bt = new BTree<>((byte) 30);
         Long[] arr = new Long[3000000];
         for (int i = 0; i < arr.length; ++i) {
             arr[i] = (long) i;

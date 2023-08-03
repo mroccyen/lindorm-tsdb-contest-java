@@ -3,7 +3,7 @@ package com.alibaba.lindorm.contest.impl.bpluse;
 import java.util.Arrays;
 
 public class BTNode {
-    final int m; // m阶B树
+    final byte m; // m阶B树
     int size; // 当前ptr的数量
     BTNode next; // 下一个叶子结点
     BTNode prev; // 上一个叶子结点
@@ -11,7 +11,7 @@ public class BTNode {
     final Object[] ptrs; // 指向子树(数据)的指针数组
     boolean isleaf; // 是否是叶子节点
 
-    BTNode(int m) {
+    BTNode(byte m) {
         this.m = m;
         keys = new Object[m + 1];
         ptrs = new Object[m + 1];
