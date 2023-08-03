@@ -57,13 +57,15 @@ public class FlushRequestTask extends Thread {
             WriteRequest writeRequest = writeRequestWrapper.getWriteRequest();
             String tableName = writeRequest.getTableName();
             Collection<Row> rows = writeRequest.getRows();
+            List<FileChannel> list = new ArrayList<>();
             for (Row row : rows) {
                 Vin vin = row.getVin();
                 //获得写文件锁
-                //Lock writeLock = fileManager.getWriteLock(tableName, vin);
-                //writeLock.lock();
+                Lock writeLock = fileManager.getWriteLock(tableName, vin);
+                writeLock.lock();
 
                 FileChannel dataWriteFileChanel = fileManager.getWriteFilChannel(tableName, vin);
+                list.add(dataWriteFileChanel);
                 SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
                 long position = dataWriteFileChanel.position();
                 //vin has 17 byte
@@ -97,14 +99,17 @@ public class FlushRequestTask extends Thread {
                 //刷盘
                 dataWriteByteBuffer.flip();
                 dataWriteFileChanel.write(dataWriteByteBuffer);
-                dataWriteFileChanel.force(false);
 
                 dataWriteByteBuffer.clear();
                 //add index
                 IndexLoader.offerIndex(tableName, row.getTimestamp(), index);
                 //释放写文件锁
-                //writeLock.unlock();
+                writeLock.unlock();
             }
+            for (FileChannel fileChannel : list) {
+                fileChannel.force(false);
+            }
+
             //释放锁让写线程返回
             writeRequestWrapper.getLock().lock();
             writeRequestWrapper.getCondition().signal();
