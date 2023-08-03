@@ -5,7 +5,6 @@ import com.alibaba.lindorm.contest.structs.Vin;
 import java.io.File;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
@@ -64,6 +63,19 @@ public class FileManager {
                 return channel;
             }
         }
+        //加锁
+        Lock writeLock = getWriteLock(tableName, vin);
+        writeLock.lock();
+
+        //拿到锁后先查询一次，可能会出现之前有线程创建了
+        Map<Integer, FileChannel> fileChannelMap = writeFileMap.get(tableName);
+        if (fileChannelMap != null) {
+            FileChannel channel = fileChannelMap.get(folderIndex);
+            if (channel != null) {
+                return channel;
+            }
+        }
+
         String absolutePath = dataPath.getAbsolutePath();
         String folder = absolutePath + File.separator + tableName;
         File tablePath = new File(folder);
@@ -75,39 +87,31 @@ public class FileManager {
         if (!f.exists()) {
             f.createNewFile();
         }
-        synchronized (writeFileMap) {
-            //拿到锁后先查询一次，可能会出现之前有线程创建了
-            Map<Integer, FileChannel> fileChannelMap = writeFileMap.get(tableName);
-            if (fileChannelMap != null) {
-                synchronized (writeFileMap) {
-                    FileChannel channel = fileChannelMap.get(folderIndex);
-                    if (channel != null) {
-                        return channel;
-                    }
-                }
-            }
 
-            FileChannel readFileChannel = FileChannel.open(f.toPath(), READ);
-            Map<Integer, FileChannel> readMap = readFileMap.get(tableName);
-            if (readMap != null) {
-                readMap.put(folderIndex, readFileChannel);
-            } else {
-                readMap = new ConcurrentHashMap<>();
-                readMap.put(folderIndex, readFileChannel);
-                readFileMap.put(tableName, readMap);
-            }
-
-            FileChannel writeFileChannel = FileChannel.open(f.toPath(), APPEND);
-            Map<Integer, FileChannel> wtireMap = writeFileMap.get(tableName);
-            if (wtireMap != null) {
-                wtireMap.put(folderIndex, writeFileChannel);
-            } else {
-                wtireMap = new ConcurrentHashMap<>();
-                wtireMap.put(folderIndex, writeFileChannel);
-                writeFileMap.put(tableName, wtireMap);
-            }
-            return writeFileChannel;
+        FileChannel readFileChannel = FileChannel.open(f.toPath(), READ);
+        Map<Integer, FileChannel> readMap = readFileMap.get(tableName);
+        if (readMap != null) {
+            readMap.put(folderIndex, readFileChannel);
+        } else {
+            readMap = new ConcurrentHashMap<>();
+            readMap.put(folderIndex, readFileChannel);
+            readFileMap.put(tableName, readMap);
         }
+
+        FileChannel writeFileChannel = FileChannel.open(f.toPath(), APPEND);
+        Map<Integer, FileChannel> wtireMap = writeFileMap.get(tableName);
+        if (wtireMap != null) {
+            wtireMap.put(folderIndex, writeFileChannel);
+        } else {
+            wtireMap = new ConcurrentHashMap<>();
+            wtireMap.put(folderIndex, writeFileChannel);
+            writeFileMap.put(tableName, wtireMap);
+        }
+
+        //释放锁
+        writeLock.unlock();
+
+        return writeFileChannel;
     }
 
     public Lock getWriteLock(String tableName, Vin vin) {
@@ -142,7 +146,20 @@ public class FileManager {
     }
 
     public void shutdown() {
-
+        try {
+            for (Map.Entry<String, Map<Integer, FileChannel>> e : writeFileMap.entrySet()) {
+                for (Map.Entry<Integer, FileChannel> file : e.getValue().entrySet()) {
+                    file.getValue().close();
+                }
+            }
+            for (Map.Entry<String, Map<Integer, FileChannel>> e : readFileMap.entrySet()) {
+                for (Map.Entry<Integer, FileChannel> file : e.getValue().entrySet()) {
+                    file.getValue().close();
+                }
+            }
+        } catch (Exception e) {
+            System.exit(-1);
+        }
     }
 
     public Map<String, Map<Integer, FileChannel>> getWriteFileMap() {
