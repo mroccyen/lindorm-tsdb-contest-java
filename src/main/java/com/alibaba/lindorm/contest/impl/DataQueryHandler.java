@@ -5,7 +5,6 @@ import com.alibaba.lindorm.contest.structs.*;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -97,6 +96,7 @@ public class DataQueryHandler {
         SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
         Map<String, Vin> vinNameMap = vinList.stream().collect(Collectors.toMap(i -> new String(i.getVin()), i -> i));
         ArrayList<Row> rowList = new ArrayList<>();
+        ByteBuffer sizeByteBuffer = ByteBuffer.allocate(1024 * 4);
         for (Index index : r) {
             String rowKeyName = new String(index.getRowKey());
             if (vinNameMap.containsKey(rowKeyName)) {
@@ -106,7 +106,7 @@ public class DataQueryHandler {
                 if (fileChannel.size() == 0) {
                     continue;
                 }
-                ByteBuffer sizeByteBuffer = ByteBuffer.allocateDirect(1024 * 4);
+                sizeByteBuffer.clear();
                 fileChannel.read(sizeByteBuffer, index.getOffset());
                 sizeByteBuffer.flip();
                 while (sizeByteBuffer.hasRemaining()) {

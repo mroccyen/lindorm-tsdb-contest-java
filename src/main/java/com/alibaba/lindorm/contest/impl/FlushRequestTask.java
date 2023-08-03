@@ -22,7 +22,7 @@ public class FlushRequestTask extends Thread {
         this.handleRequestTask = handleRequestTask;
         this.fileManager = fileManager;
         //每个线程有10M缓冲区用于写数据
-        dataWriteByteBuffer = ByteBuffer.allocateDirect(1024 * 1024 * 10);
+        dataWriteByteBuffer = ByteBuffer.allocate(1024 * 1024 * 10);
     }
 
     public void shutdown() {
