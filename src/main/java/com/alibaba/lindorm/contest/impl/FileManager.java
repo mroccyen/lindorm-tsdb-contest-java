@@ -117,32 +117,11 @@ public class FileManager {
     public Lock getWriteLock(String tableName, Vin vin) {
         int folderIndex = vin.hashCode() % CommonSetting.NUM_FOLDERS;
         Map<Integer, Lock> lockMap = writeLockMap.get(tableName);
-        if (lockMap != null) {
-            Lock lock = lockMap.get(folderIndex);
-            if (lock != null) {
-                return lock;
-            }
+        Lock writeLock = lockMap.get(folderIndex);
+        if (writeLock != null) {
+            return writeLock;
         }
-        synchronized (writeLockMap) {
-            //拿到锁后先查询一次，可能会出现之前有线程创建了
-            Map<Integer, Lock> map = writeLockMap.get(tableName);
-            if (map != null) {
-                synchronized (writeLockMap) {
-                    Lock lock = map.get(folderIndex);
-                    if (lock != null) {
-                        return lock;
-                    }
-                }
-            }
-            if (lockMap != null) {
-                return lockMap.computeIfAbsent(folderIndex, key -> new ReentrantLock());
-            } else {
-                lockMap = new ConcurrentHashMap<>();
-                Lock lock = lockMap.computeIfAbsent(folderIndex, key -> new ReentrantLock());
-                writeLockMap.put(tableName, lockMap);
-                return lock;
-            }
-        }
+        return lockMap.computeIfAbsent(folderIndex, key -> new ReentrantLock());
     }
 
     public void shutdown() {
@@ -168,6 +147,10 @@ public class FileManager {
 
     public Map<String, Map<Integer, FileChannel>> getReadFileMap() {
         return readFileMap;
+    }
+
+    public void initTableWriteLockMap(String tableName) {
+        writeLockMap.put(tableName, new ConcurrentHashMap<>());
     }
 
     public void addSchemaMeta(String tableName, SchemaMeta schemaMeta) {

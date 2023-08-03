@@ -60,14 +60,10 @@ public class FlushRequestTask extends Thread {
             List<FileChannel> list = new ArrayList<>();
             for (Row row : rows) {
                 Vin vin = row.getVin();
-                //获得写文件锁
-                Lock writeLock = fileManager.getWriteLock(tableName, vin);
-                writeLock.lock();
 
                 FileChannel dataWriteFileChanel = fileManager.getWriteFilChannel(tableName, vin);
                 list.add(dataWriteFileChanel);
                 SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
-                long position = dataWriteFileChanel.position();
                 //vin has 17 byte
                 dataWriteByteBuffer.put(vin.getVin());
                 dataWriteByteBuffer.putLong(row.getTimestamp());
@@ -92,6 +88,12 @@ public class FlushRequestTask extends Thread {
                             throw new IllegalStateException("Invalid column type");
                     }
                 }
+
+                //获得写文件锁
+                Lock writeLock = fileManager.getWriteLock(tableName, vin);
+                writeLock.lock();
+
+                long position = dataWriteFileChanel.position();
                 Index index = new Index();
                 index.setOffset(position);
                 index.setRowKey(vin.getVin());
@@ -100,11 +102,12 @@ public class FlushRequestTask extends Thread {
                 dataWriteByteBuffer.flip();
                 dataWriteFileChanel.write(dataWriteByteBuffer);
 
+                //释放写文件锁
+                writeLock.unlock();
+
                 dataWriteByteBuffer.clear();
                 //add index
                 IndexLoader.offerIndex(tableName, row.getTimestamp(), index);
-                //释放写文件锁
-                writeLock.unlock();
             }
             for (FileChannel fileChannel : list) {
                 fileChannel.force(false);
