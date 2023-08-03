@@ -40,10 +40,10 @@ public class TSDBEngineImpl extends TSDBEngine {
         schemaHandler = new SchemaHandler(fileManager, getDataPath());
         schemaHandler.loadTableInfo();
         //加载索引信息
-        indexLoaderTask = new IndexLoaderTask();
-        indexLoaderTask.setName("IndexLoaderTask");
-        indexLoaderTask.start();
-        IndexLoader.loadIndex(fileManager, indexLoaderTask);
+        //indexLoaderTask = new IndexLoaderTask();
+        //indexLoaderTask.setName("IndexLoaderTask");
+        //indexLoaderTask.start();
+        //IndexLoader.loadIndex(fileManager, indexLoaderTask);
         //开启写入任务
         writeTask = new HandleRequestTask(fileManager);
         writeTask.setName("HandleRequestTask");
@@ -63,8 +63,8 @@ public class TSDBEngineImpl extends TSDBEngine {
     @Override
     public void shutdown() {
         writeTask.shutdown();
-        indexLoaderTask.shutdown();
-        IndexLoader.shutdown();
+        //indexLoaderTask.shutdown();
+        //IndexLoader.shutdown();
         fileManager.shutdown();
         schemaHandler.flushTableInfo();
         System.out.println(">>> shutdown complete");

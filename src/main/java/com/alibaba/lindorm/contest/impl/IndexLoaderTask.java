@@ -41,7 +41,7 @@ public class IndexLoaderTask extends Thread {
                         Index index = new Index();
                         index.setOffset(notice.getOffset());
                         index.setRowKey(notice.getVin());
-                        IndexLoader.offerIndex(notice.getTableName(), notice.getTimestamp(), index);
+                        //IndexLoader.offerIndex(notice.getTableName(), notice.getTimestamp(), index);
                     }
                 }
             } catch (Exception e) {

@@ -106,7 +106,7 @@ public class FlushRequestTask extends Thread {
 
                 dataWriteByteBuffer.clear();
                 //add index
-                IndexLoader.offerIndex(tableName, row.getTimestamp(), index);
+                //IndexLoader.offerIndex(tableName, row.getTimestamp(), index);
             }
         }
 
