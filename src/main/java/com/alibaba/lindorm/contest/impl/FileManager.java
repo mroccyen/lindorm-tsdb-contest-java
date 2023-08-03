@@ -63,18 +63,18 @@ public class FileManager {
                 return channel;
             }
         }
-        //加锁
-        Lock writeLock = getWriteLock(tableName, vin);
-        writeLock.lock();
-
-        //拿到锁后先查询一次，可能会出现之前有线程创建了
-        Map<Integer, FileChannel> fileChannelMap = writeFileMap.get(tableName);
-        if (fileChannelMap != null) {
-            FileChannel channel = fileChannelMap.get(folderIndex);
-            if (channel != null) {
-                return channel;
-            }
-        }
+//        //加锁
+//        Lock writeLock = getWriteLock(tableName, vin);
+//        writeLock.lock();
+//
+//        //拿到锁后先查询一次，可能会出现之前有线程创建了
+//        Map<Integer, FileChannel> fileChannelMap = writeFileMap.get(tableName);
+//        if (fileChannelMap != null) {
+//            FileChannel channel = fileChannelMap.get(folderIndex);
+//            if (channel != null) {
+//                return channel;
+//            }
+//        }
 
         String absolutePath = dataPath.getAbsolutePath();
         String folder = absolutePath + File.separator + tableName;
@@ -109,7 +109,7 @@ public class FileManager {
         }
 
         //释放锁
-        writeLock.unlock();
+        //writeLock.unlock();
 
         return writeFileChannel;
     }
