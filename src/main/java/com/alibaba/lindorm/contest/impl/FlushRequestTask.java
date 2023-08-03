@@ -51,13 +51,13 @@ public class FlushRequestTask extends Thread {
     private void doWrite(List<WriteRequestWrapper> writeRequestWrapperList) throws IOException {
         //保存KV数据
         Iterator<WriteRequestWrapper> iterator = writeRequestWrapperList.iterator();
+        List<FileChannel> list = new ArrayList<>();
         while (iterator.hasNext()) {
             WriteRequestWrapper writeRequestWrapper = iterator.next();
 
             WriteRequest writeRequest = writeRequestWrapper.getWriteRequest();
             String tableName = writeRequest.getTableName();
             Collection<Row> rows = writeRequest.getRows();
-            List<FileChannel> list = new ArrayList<>();
             for (Row row : rows) {
                 Vin vin = row.getVin();
 
@@ -98,7 +98,6 @@ public class FlushRequestTask extends Thread {
                 index.setOffset(position);
                 index.setRowKey(vin.getVin());
 
-                //刷盘
                 dataWriteByteBuffer.flip();
                 dataWriteFileChanel.write(dataWriteByteBuffer);
 
@@ -109,10 +108,16 @@ public class FlushRequestTask extends Thread {
                 //add index
                 IndexLoader.offerIndex(tableName, row.getTimestamp(), index);
             }
-            for (FileChannel fileChannel : list) {
-                fileChannel.force(false);
-            }
+        }
 
+        for (FileChannel fileChannel : list) {
+            //刷盘
+            fileChannel.force(false);
+        }
+
+        iterator = writeRequestWrapperList.iterator();
+        while (iterator.hasNext()) {
+            WriteRequestWrapper writeRequestWrapper = iterator.next();
             //释放锁让写线程返回
             writeRequestWrapper.getLock().lock();
             writeRequestWrapper.getCondition().signal();
