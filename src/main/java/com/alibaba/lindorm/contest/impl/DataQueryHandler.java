@@ -44,7 +44,7 @@ public class DataQueryHandler {
         Set<String> requestedColumns = trReadReq.getRequestedFields();
         ArrayList<Row> result;
         try {
-            result = executeTimeRangeQuery(tableName, Collections.singletonList(vin), requestedColumns, trReadReq.getTimeLowerBound(), trReadReq.getTimeUpperBound());
+            result = executeTimeRangeQuery(tableName, vin, requestedColumns, trReadReq.getTimeLowerBound(), trReadReq.getTimeUpperBound());
         } catch (Exception ex) {
             System.out.println(">>> executeTimeRangeQuery happen exception: " + ex.getMessage());
             for (StackTraceElement stackTraceElement : ex.getStackTrace()) {
@@ -129,78 +129,70 @@ public class DataQueryHandler {
         return new ArrayList<>(latestRowMap.values());
     }
 
-    private ArrayList<Row> executeTimeRangeQuery(String tableName, Collection<Vin> vinList, Set<String> requestedColumns, long timeLowerBound, long timeUpperBound) throws IOException {
+    private ArrayList<Row> executeTimeRangeQuery(String tableName, Vin vin, Set<String> requestedColumns, long timeLowerBound, long timeUpperBound) throws IOException {
         Map<Integer, FileChannel> fileChannelMap = fileManager.getReadFileMap().get(tableName);
         SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
         ArrayList<Row> rowList = new ArrayList<>();
 
         Map<Vin, ArrayList<Row>> timeRangeRowMap = new HashMap<>();
         Set<String> vinNameSet = new HashSet<>();
-        for (Vin vin : vinList) {
-            String vinReqStr = new String(vin.getVin());
-            vinNameSet.add(vinReqStr);
+        String vinReqStr = new String(vin.getVin());
+        vinNameSet.add(vinReqStr);
+
+        int folderIndex = vin.hashCode() % CommonSetting.NUM_FOLDERS;
+        FileChannel fileChannel = fileChannelMap.get(folderIndex);
+        if (fileChannel == null || fileChannel.size() == 0) {
+            return new ArrayList<>();
         }
-        for (Vin vin : vinList) {
-            int folderIndex = vin.hashCode() % CommonSetting.NUM_FOLDERS;
-            FileChannel fileChannel = fileChannelMap.get(folderIndex);
-            if (fileChannel == null || fileChannel.size() == 0) {
-                continue;
+        MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
+        while (sizeByteBuffer.hasRemaining()) {
+            byte[] vinBytes = new byte[Vin.VIN_LENGTH];
+            for (int i = 0; i < Vin.VIN_LENGTH; i++) {
+                vinBytes[i] = sizeByteBuffer.get();
             }
-            if (timeRangeRowMap.containsKey(vin)) {
-                continue;
-            }
-            MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
-            while (sizeByteBuffer.hasRemaining()) {
-                byte[] vinBytes = new byte[Vin.VIN_LENGTH];
-                for (int i = 0; i < Vin.VIN_LENGTH; i++) {
-                    vinBytes[i] = sizeByteBuffer.get();
-                }
-                String vinStr = new String(vinBytes);
-                long t = sizeByteBuffer.getLong();
-                Map<String, ColumnValue> columns = new HashMap<>();
-                for (int cI = 0; cI < schemaMeta.getColumnsNum(); ++cI) {
-                    String cName = schemaMeta.getColumnsName().get(cI);
-                    ColumnValue.ColumnType cType = schemaMeta.getColumnsType().get(cI);
-                    ColumnValue cVal;
-                    switch (cType) {
-                        case COLUMN_TYPE_INTEGER:
-                            int intVal = sizeByteBuffer.getInt();
-                            cVal = new ColumnValue.IntegerColumn(intVal);
-                            break;
-                        case COLUMN_TYPE_DOUBLE_FLOAT:
-                            double doubleVal = sizeByteBuffer.getDouble();
-                            cVal = new ColumnValue.DoubleFloatColumn(doubleVal);
-                            break;
-                        case COLUMN_TYPE_STRING:
-                            int length = sizeByteBuffer.getInt();
-                            byte[] bytes = new byte[length];
-                            for (int i = 0; i < length; i++) {
-                                bytes[i] = sizeByteBuffer.get();
-                            }
-                            cVal = new ColumnValue.StringColumn(ByteBuffer.wrap(bytes));
-                            break;
-                        default:
-                            throw new IllegalStateException("Undefined column type, this is not expected");
-                    }
-                    if (requestedColumns.contains(cName)) {
-                        columns.put(cName, cVal);
-                    }
-                }
-                if (vinNameSet.contains(vinStr)) {
-                    //范围查询
-                    if (timeLowerBound != -1 && timeUpperBound != -1) {
-                        if (t >= timeLowerBound && t < timeUpperBound) {
-                            //构建Row
-                            Vin v = new Vin(vinBytes);
-                            ArrayList<Row> rows = timeRangeRowMap.get(v);
-                            if (rows == null) {
-                                rows = new ArrayList<>();
-                            }
-                            Row row = new Row(v, t, columns);
-                            rows.add(row);
-                            timeRangeRowMap.put(v, rows);
+            String vinStr = new String(vinBytes);
+            long t = sizeByteBuffer.getLong();
+            Map<String, ColumnValue> columns = new HashMap<>();
+            for (int cI = 0; cI < schemaMeta.getColumnsNum(); ++cI) {
+                String cName = schemaMeta.getColumnsName().get(cI);
+                ColumnValue.ColumnType cType = schemaMeta.getColumnsType().get(cI);
+                ColumnValue cVal;
+                switch (cType) {
+                    case COLUMN_TYPE_INTEGER:
+                        int intVal = sizeByteBuffer.getInt();
+                        cVal = new ColumnValue.IntegerColumn(intVal);
+                        break;
+                    case COLUMN_TYPE_DOUBLE_FLOAT:
+                        double doubleVal = sizeByteBuffer.getDouble();
+                        cVal = new ColumnValue.DoubleFloatColumn(doubleVal);
+                        break;
+                    case COLUMN_TYPE_STRING:
+                        int length = sizeByteBuffer.getInt();
+                        byte[] bytes = new byte[length];
+                        for (int i = 0; i < length; i++) {
+                            bytes[i] = sizeByteBuffer.get();
                         }
+                        cVal = new ColumnValue.StringColumn(ByteBuffer.wrap(bytes));
+                        break;
+                    default:
+                        throw new IllegalStateException("Undefined column type, this is not expected");
+                }
+                if (requestedColumns.contains(cName)) {
+                    columns.put(cName, cVal);
+                }
+            }
+            if (vinNameSet.contains(vinStr)) {
+                //范围查询
+                if (t >= timeLowerBound && t < timeUpperBound) {
+                    //构建Row
+                    Vin v = new Vin(vinBytes);
+                    ArrayList<Row> rows = timeRangeRowMap.get(v);
+                    if (rows == null) {
+                        rows = new ArrayList<>();
                     }
+                    Row row = new Row(v, t, columns);
+                    rows.add(row);
+                    timeRangeRowMap.put(v, rows);
                 }
             }
         }
