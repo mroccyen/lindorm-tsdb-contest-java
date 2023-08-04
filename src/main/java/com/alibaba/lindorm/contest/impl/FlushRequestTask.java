@@ -97,6 +97,7 @@ public class FlushRequestTask extends Thread {
                 Index index = new Index();
                 index.setOffset(position);
                 index.setRowKey(vin.getVin());
+                index.setLatestTimestamp(row.getTimestamp());
 
                 dataWriteByteBuffer.flip();
                 dataWriteFileChanel.write(dataWriteByteBuffer);
@@ -106,7 +107,7 @@ public class FlushRequestTask extends Thread {
 
                 dataWriteByteBuffer.clear();
                 //add index
-                //IndexLoader.offerIndex(tableName, row.getTimestamp(), index);
+                IndexLoader.offerLatestIndex(tableName, vin, index);
             }
         }
 

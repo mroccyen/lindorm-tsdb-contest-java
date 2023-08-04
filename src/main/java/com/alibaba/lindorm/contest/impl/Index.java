@@ -3,6 +3,7 @@ package com.alibaba.lindorm.contest.impl;
 public class Index {
     private long offset;
     private byte[] rowKey;
+    private long latestTimestamp;
 
     public long getOffset() {
         return offset;
@@ -18,5 +19,13 @@ public class Index {
 
     public void setRowKey(byte[] rowKey) {
         this.rowKey = rowKey;
+    }
+
+    public long getLatestTimestamp() {
+        return latestTimestamp;
+    }
+
+    public void setLatestTimestamp(long latestTimestamp) {
+        this.latestTimestamp = latestTimestamp;
     }
 }

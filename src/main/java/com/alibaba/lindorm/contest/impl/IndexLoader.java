@@ -1,6 +1,5 @@
 package com.alibaba.lindorm.contest.impl;
 
-import com.alibaba.lindorm.contest.impl.bpluse.BTree;
 import com.alibaba.lindorm.contest.structs.ColumnValue;
 import com.alibaba.lindorm.contest.structs.Vin;
 
@@ -11,42 +10,35 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class IndexLoader {
-    private static final ConcurrentHashMap<String, ConcurrentHashMap<String, BTree<Long>>> INDEX_CACHE_MAP = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, ConcurrentHashMap<Vin, Index>> LATEST_INDEX_CACHE_MAP = new ConcurrentHashMap<>();
 
-    public static void offerIndex(String tableName, long timestamp, Index index) {
-        String rowKey = new String(index.getRowKey());
-        if (INDEX_CACHE_MAP.containsKey(tableName)) {
-            ConcurrentHashMap<String, BTree<Long>> map = INDEX_CACHE_MAP.get(tableName);
-            if (map.containsKey(rowKey)) {
-                BTree<Long> tree = map.get(rowKey);
-                tree.insert(timestamp, index);
-            } else {
-                BTree<Long> tree = new BTree<>((byte) 30);
-                tree.insert(timestamp, index);
-                map.put(rowKey, tree);
+    public static void offerLatestIndex(String tableName, Vin vin, Index index) {
+        if (LATEST_INDEX_CACHE_MAP.containsKey(tableName)) {
+            ConcurrentHashMap<Vin, Index> map = LATEST_INDEX_CACHE_MAP.get(tableName);
+            Index i = map.get(vin);
+            if (i == null || i.getLatestTimestamp() <= index.getLatestTimestamp()) {
+                map.put(vin, index);
             }
         } else {
-            ConcurrentHashMap<String, BTree<Long>> map = new ConcurrentHashMap<>();
-            BTree<Long> tree = new BTree<>((byte) 30);
-            tree.insert(timestamp, index);
-            map.put(rowKey, tree);
-            INDEX_CACHE_MAP.put(tableName, map);
+            ConcurrentHashMap<Vin, Index> map = new ConcurrentHashMap<>();
+            map.put(vin, index);
+            LATEST_INDEX_CACHE_MAP.put(tableName, map);
         }
     }
 
-    public static ConcurrentHashMap<String, BTree<Long>> getIndexBlockMap(String tableName) {
-        ConcurrentHashMap<String, BTree<Long>> map = INDEX_CACHE_MAP.get(tableName);
+    public static Index getLatestIndex(String tableName, Vin vin) {
+        ConcurrentHashMap<Vin, Index> map = LATEST_INDEX_CACHE_MAP.get(tableName);
         if (map == null) {
-            return new ConcurrentHashMap<>();
+            return null;
         }
-        return map;
+        return map.get(vin);
     }
 
     public static void shutdown() {
-        INDEX_CACHE_MAP.clear();
+        LATEST_INDEX_CACHE_MAP.clear();
     }
 
-    public static void loadIndex(FileManager fileManager, IndexLoaderTask indexLoaderTask) throws IOException {
+    public static void loadLatestIndex(FileManager fileManager, IndexLoaderTask indexLoaderTask) throws IOException {
         System.out.println(">>> initIndexBuffer load exist index data begin");
         long start = System.currentTimeMillis();
         for (Map.Entry<String, Map<Integer, FileChannel>> mapEntry : fileManager.getReadFileMap().entrySet()) {

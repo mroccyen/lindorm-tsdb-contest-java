@@ -80,7 +80,7 @@ public class MyEvaluationSample {
             String str = "12345678912345678";
             ArrayList<Row> rowList = new ArrayList<>();
 
-            rowList.add(new Row(new Vin(str.getBytes(StandardCharsets.UTF_8)), 1, columns1));
+            rowList.add(new Row(new Vin(str.getBytes(StandardCharsets.UTF_8)), 50, columns1));
             tsdbEngineSample.upsert(new WriteRequest("test", rowList));
 
             //read

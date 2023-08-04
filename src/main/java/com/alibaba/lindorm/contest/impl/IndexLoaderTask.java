@@ -1,5 +1,7 @@
 package com.alibaba.lindorm.contest.impl;
 
+import com.alibaba.lindorm.contest.structs.Vin;
+
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -10,8 +12,6 @@ public class IndexLoaderTask extends Thread {
     private boolean stop = false;
 
     private IndexLoadCompleteWrapper indexLoadCompleteWrapper;
-
-    private long size;
 
     public void shutdown() {
         stop = true;
@@ -35,13 +35,12 @@ public class IndexLoaderTask extends Thread {
                         indexLoadCompleteWrapper.getLock().lock();
                         indexLoadCompleteWrapper.getCondition().signal();
                         indexLoadCompleteWrapper.getLock().unlock();
-                        //System.out.println(">>> IndexResolveTask load index data size: " + size);
                     } else {
-                        size++;
                         Index index = new Index();
                         index.setOffset(notice.getOffset());
                         index.setRowKey(notice.getVin());
-                        //IndexLoader.offerIndex(notice.getTableName(), notice.getTimestamp(), index);
+                        index.setLatestTimestamp(notice.getTimestamp());
+                        IndexLoader.offerLatestIndex(notice.getTableName(), new Vin(notice.getVin()), index);
                     }
                 }
             } catch (Exception e) {
