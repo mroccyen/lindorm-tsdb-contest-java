@@ -120,19 +120,21 @@ public class DataQueryHandler {
                     if (timeLowerBound != -1 && timeUpperBound != -1) {
                         if (t >= timeLowerBound && t < timeUpperBound) {
                             //构建Row
-                            ArrayList<Row> rows = timeRangeRowMap.get(vin);
+                            Vin v = new Vin(vinBytes);
+                            ArrayList<Row> rows = timeRangeRowMap.get(v);
                             if (rows == null) {
                                 rows = new ArrayList<>();
                             }
-                            Row row = new Row(vin, t, columns);
+                            Row row = new Row(v, t, columns);
                             rows.add(row);
-                            timeRangeRowMap.put(vin, rows);
+                            timeRangeRowMap.put(v, rows);
                         }
                     } else {
-                        if (latestTimestamp.get(vin) < t) {
+                        Vin v = new Vin(vinBytes);
+                        if (latestTimestamp.get(v) < t) {
                             //构建Row
-                            latestRowMap.put(vin, new Row(vin, t, columns));
-                            latestTimestamp.put(vin, t);
+                            latestRowMap.put(v, new Row(v, t, columns));
+                            latestTimestamp.put(v, t);
                         }
                     }
                 }
