@@ -18,10 +18,13 @@ public class DataQueryHandler {
     public ArrayList<Row> executeLatestQuery(LatestQueryRequest pReadReq) throws IOException {
         String tableName = pReadReq.getTableName();
         Collection<Vin> vinList = pReadReq.getVins();
+        if (vinList == null || vinList.size() == 0) {
+            return new ArrayList<>();
+        }
         Set<String> requestedColumns = pReadReq.getRequestedColumns();
         ArrayList<Row> result;
         try {
-            result = query(tableName, vinList, requestedColumns, -1, -1);
+            result = executeLatestQuery(tableName, vinList, requestedColumns);
         } catch (Exception ex) {
             System.out.println(">>> executeLatestQuery happen exception: " + ex.getMessage());
             for (StackTraceElement stackTraceElement : ex.getStackTrace()) {
@@ -35,10 +38,13 @@ public class DataQueryHandler {
     public ArrayList<Row> executeTimeRangeQuery(TimeRangeQueryRequest trReadReq) throws IOException {
         String tableName = trReadReq.getTableName();
         Vin vin = trReadReq.getVin();
+        if (vin == null) {
+            return new ArrayList<>();
+        }
         Set<String> requestedColumns = trReadReq.getRequestedFields();
         ArrayList<Row> result;
         try {
-            result = query(tableName, Collections.singletonList(vin), requestedColumns, trReadReq.getTimeLowerBound(), trReadReq.getTimeUpperBound());
+            result = executeTimeRangeQuery(tableName, Collections.singletonList(vin), requestedColumns, trReadReq.getTimeLowerBound(), trReadReq.getTimeUpperBound());
         } catch (Exception ex) {
             System.out.println(">>> executeTimeRangeQuery happen exception: " + ex.getMessage());
             for (StackTraceElement stackTraceElement : ex.getStackTrace()) {
@@ -49,20 +55,88 @@ public class DataQueryHandler {
         return result;
     }
 
-    private ArrayList<Row> query(String tableName, Collection<Vin> vinList, Set<String> requestedColumns, long timeLowerBound, long timeUpperBound) throws IOException {
-        if (vinList == null || vinList.size() == 0) {
-            return new ArrayList<>();
+    private ArrayList<Row> executeLatestQuery(String tableName, Collection<Vin> vinList, Set<String> requestedColumns) throws IOException {
+        Map<Integer, FileChannel> fileChannelMap = fileManager.getReadFileMap().get(tableName);
+        SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
+
+        Map<Vin, Long> latestTimestamp = new HashMap<>();
+        Map<Vin, Row> latestRowMap = new HashMap<>();
+        Set<String> vinNameSet = new HashSet<>();
+        for (Vin vin : vinList) {
+            latestTimestamp.put(vin, 0L);
+            String vinReqStr = new String(vin.getVin());
+            vinNameSet.add(vinReqStr);
         }
+        ByteBuffer sizeByteBuffer = ByteBuffer.allocate(1024 * 10);
+        for (Vin vin : vinList) {
+            int folderIndex = vin.hashCode() % CommonSetting.NUM_FOLDERS;
+            FileChannel fileChannel = fileChannelMap.get(folderIndex);
+            if (fileChannel == null || fileChannel.size() == 0) {
+                continue;
+            }
+            Index latestIndex = IndexLoader.getLatestIndex(tableName, vin);
+            if (latestIndex == null) {
+                return null;
+            }
+            fileChannel.read(sizeByteBuffer, latestIndex.getOffset());
+            sizeByteBuffer.flip();
+
+            byte[] vinBytes = new byte[Vin.VIN_LENGTH];
+            for (int i = 0; i < Vin.VIN_LENGTH; i++) {
+                vinBytes[i] = sizeByteBuffer.get();
+            }
+            String vinStr = new String(vinBytes);
+            long t = sizeByteBuffer.getLong();
+            Map<String, ColumnValue> columns = new HashMap<>();
+            for (int cI = 0; cI < schemaMeta.getColumnsNum(); ++cI) {
+                String cName = schemaMeta.getColumnsName().get(cI);
+                ColumnValue.ColumnType cType = schemaMeta.getColumnsType().get(cI);
+                ColumnValue cVal;
+                switch (cType) {
+                    case COLUMN_TYPE_INTEGER:
+                        int intVal = sizeByteBuffer.getInt();
+                        cVal = new ColumnValue.IntegerColumn(intVal);
+                        break;
+                    case COLUMN_TYPE_DOUBLE_FLOAT:
+                        double doubleVal = sizeByteBuffer.getDouble();
+                        cVal = new ColumnValue.DoubleFloatColumn(doubleVal);
+                        break;
+                    case COLUMN_TYPE_STRING:
+                        int length = sizeByteBuffer.getInt();
+                        byte[] bytes = new byte[length];
+                        for (int i = 0; i < length; i++) {
+                            bytes[i] = sizeByteBuffer.get();
+                        }
+                        cVal = new ColumnValue.StringColumn(ByteBuffer.wrap(bytes));
+                        break;
+                    default:
+                        throw new IllegalStateException("Undefined column type, this is not expected");
+                }
+                if (requestedColumns.contains(cName)) {
+                    columns.put(cName, cVal);
+                }
+            }
+            if (vinNameSet.contains(vinStr)) {
+                Vin v = new Vin(vinBytes);
+                if (latestTimestamp.get(v) < t) {
+                    //构建Row
+                    latestRowMap.put(v, new Row(v, t, columns));
+                    latestTimestamp.put(v, t);
+                }
+            }
+            sizeByteBuffer.clear();
+        }
+        return new ArrayList<>(latestRowMap.values());
+    }
+
+    private ArrayList<Row> executeTimeRangeQuery(String tableName, Collection<Vin> vinList, Set<String> requestedColumns, long timeLowerBound, long timeUpperBound) throws IOException {
         Map<Integer, FileChannel> fileChannelMap = fileManager.getReadFileMap().get(tableName);
         SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
         ArrayList<Row> rowList = new ArrayList<>();
 
-        Map<Vin, Long> latestTimestamp = new HashMap<>();
-        Map<Vin, Row> latestRowMap = new HashMap<>();
         Map<Vin, ArrayList<Row>> timeRangeRowMap = new HashMap<>();
         Set<String> vinNameSet = new HashSet<>();
         for (Vin vin : vinList) {
-            latestTimestamp.put(vin, 0L);
             String vinReqStr = new String(vin.getVin());
             vinNameSet.add(vinReqStr);
         }
@@ -70,9 +144,6 @@ public class DataQueryHandler {
             int folderIndex = vin.hashCode() % CommonSetting.NUM_FOLDERS;
             FileChannel fileChannel = fileChannelMap.get(folderIndex);
             if (fileChannel == null || fileChannel.size() == 0) {
-                continue;
-            }
-            if (latestRowMap.containsKey(vin)) {
                 continue;
             }
             if (timeRangeRowMap.containsKey(vin)) {
@@ -129,13 +200,6 @@ public class DataQueryHandler {
                             rows.add(row);
                             timeRangeRowMap.put(v, rows);
                         }
-                    } else {
-                        Vin v = new Vin(vinBytes);
-                        if (latestTimestamp.get(v) < t) {
-                            //构建Row
-                            latestRowMap.put(v, new Row(v, t, columns));
-                            latestTimestamp.put(v, t);
-                        }
                     }
                 }
             }
@@ -144,8 +208,6 @@ public class DataQueryHandler {
             for (Map.Entry<Vin, ArrayList<Row>> e : timeRangeRowMap.entrySet()) {
                 rowList.addAll(e.getValue());
             }
-        } else {
-            rowList.addAll(latestRowMap.values());
         }
         return rowList;
     }
