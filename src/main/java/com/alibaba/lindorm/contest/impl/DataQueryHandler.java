@@ -59,14 +59,23 @@ public class DataQueryHandler {
 
         Map<Vin, Long> latestTimestamp = new HashMap<>();
         Map<Vin, Row> latestRowMap = new HashMap<>();
+        Map<Vin, ArrayList<Row>> timeRangeRowMap = new HashMap<>();
+        Set<String> vinNameSet = new HashSet<>();
         for (Vin vin : vinList) {
             latestTimestamp.put(vin, 0L);
+            String vinReqStr = new String(vin.getVin());
+            vinNameSet.add(vinReqStr);
         }
         for (Vin vin : vinList) {
             int folderIndex = vin.hashCode() % CommonSetting.NUM_FOLDERS;
-            String vinReqStr = new String(vin.getVin());
             FileChannel fileChannel = fileChannelMap.get(folderIndex);
             if (fileChannel == null || fileChannel.size() == 0) {
+                continue;
+            }
+            if (latestRowMap.containsKey(vin)) {
+                continue;
+            }
+            if (timeRangeRowMap.containsKey(vin)) {
                 continue;
             }
             MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
@@ -106,29 +115,36 @@ public class DataQueryHandler {
                         columns.put(cName, cVal);
                     }
                 }
-                if (!vinReqStr.equals(vinStr)) {
-                    continue;
-                }
-                //范围查询
-                if (timeLowerBound != -1 && timeUpperBound != -1) {
-                    if (t >= timeLowerBound && t < timeUpperBound) {
-                        //构建Row
-                        Row row = new Row(vin, t, columns);
-                        rowList.add(row);
-                    }
-                } else {
-                    if (latestTimestamp.get(vin) < t) {
-                        //构建Row
-                        latestRowMap.put(vin, new Row(vin, t, columns));
-                        latestTimestamp.put(vin, t);
+                if (vinNameSet.contains(vinStr)) {
+                    //范围查询
+                    if (timeLowerBound != -1 && timeUpperBound != -1) {
+                        if (t >= timeLowerBound && t < timeUpperBound) {
+                            //构建Row
+                            ArrayList<Row> rows = timeRangeRowMap.get(vin);
+                            if (rows == null) {
+                                rows = new ArrayList<>();
+                            }
+                            Row row = new Row(vin, t, columns);
+                            rows.add(row);
+                            timeRangeRowMap.put(vin, rows);
+                        }
+                    } else {
+                        if (latestTimestamp.get(vin) < t) {
+                            //构建Row
+                            latestRowMap.put(vin, new Row(vin, t, columns));
+                            latestTimestamp.put(vin, t);
+                        }
                     }
                 }
             }
         }
         if (timeLowerBound != -1 && timeUpperBound != -1) {
-            return rowList;
+            for (Map.Entry<Vin, ArrayList<Row>> e : timeRangeRowMap.entrySet()) {
+                rowList.addAll(e.getValue());
+            }
         } else {
-            return new ArrayList<>(latestRowMap.values());
+            rowList.addAll(latestRowMap.values());
         }
+        return rowList;
     }
 }
