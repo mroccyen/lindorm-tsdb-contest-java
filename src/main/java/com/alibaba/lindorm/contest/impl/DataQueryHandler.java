@@ -56,7 +56,6 @@ public class DataQueryHandler {
     }
 
     private ArrayList<Row> executeLatestQuery(String tableName, Collection<Vin> vinList, Set<String> requestedColumns) throws IOException {
-        Map<Integer, FileChannel> fileChannelMap = fileManager.getReadFileMap().get(tableName);
         SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
 
         Map<Vin, Long> latestTimestamp = new HashMap<>();
@@ -69,9 +68,12 @@ public class DataQueryHandler {
         }
         ByteBuffer sizeByteBuffer = ByteBuffer.allocate(1024 * 10);
         for (Vin vin : vinList) {
-            int folderIndex = vin.hashCode() % CommonSetting.NUM_FOLDERS;
-            FileChannel fileChannel = fileChannelMap.get(folderIndex);
+            FileChannel fileChannel = fileManager.getReadFileChannel(tableName, vin);
             if (fileChannel == null || fileChannel.size() == 0) {
+                continue;
+            }
+            if (fileChannel.size() == 0) {
+                fileChannel.close();
                 continue;
             }
             Index latestIndex = IndexLoader.getLatestIndex(tableName, vin);
@@ -125,12 +127,12 @@ public class DataQueryHandler {
                 }
             }
             sizeByteBuffer.clear();
+            fileChannel.close();
         }
         return new ArrayList<>(latestRowMap.values());
     }
 
     private ArrayList<Row> executeTimeRangeQuery(String tableName, Vin vin, Set<String> requestedColumns, long timeLowerBound, long timeUpperBound) throws IOException {
-        Map<Integer, FileChannel> fileChannelMap = fileManager.getReadFileMap().get(tableName);
         SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
         ArrayList<Row> rowList = new ArrayList<>();
 
@@ -139,9 +141,12 @@ public class DataQueryHandler {
         String vinReqStr = new String(vin.getVin());
         vinNameSet.add(vinReqStr);
 
-        int folderIndex = vin.hashCode() % CommonSetting.NUM_FOLDERS;
-        FileChannel fileChannel = fileChannelMap.get(folderIndex);
-        if (fileChannel == null || fileChannel.size() == 0) {
+        FileChannel fileChannel = fileManager.getReadFileChannel(tableName, vin);
+        if (fileChannel == null) {
+            return new ArrayList<>();
+        }
+        if (fileChannel.size() == 0) {
+            fileChannel.close();
             return new ArrayList<>();
         }
         MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
@@ -201,6 +206,8 @@ public class DataQueryHandler {
                 rowList.addAll(e.getValue());
             }
         }
+
+        fileChannel.close();
         return rowList;
     }
 }

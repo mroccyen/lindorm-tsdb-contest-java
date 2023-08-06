@@ -3,11 +3,15 @@ package com.alibaba.lindorm.contest.impl;
 import com.alibaba.lindorm.contest.structs.ColumnValue;
 import com.alibaba.lindorm.contest.structs.Vin;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static java.nio.file.StandardOpenOption.READ;
 
 public class IndexLoader {
     private static final ConcurrentHashMap<String, ConcurrentHashMap<Vin, Index>> LATEST_INDEX_CACHE_MAP = new ConcurrentHashMap<>();
@@ -41,11 +45,12 @@ public class IndexLoader {
     public static void loadLatestIndex(FileManager fileManager, IndexLoaderTask indexLoaderTask) throws IOException {
         System.out.println(">>> initIndexBuffer load exist index data begin");
         long start = System.currentTimeMillis();
-        for (Map.Entry<String, Map<Integer, FileChannel>> mapEntry : fileManager.getReadFileMap().entrySet()) {
+        Map<String, List<File>> existFileMap = fileManager.getExistFile();
+        for (Map.Entry<String, List<File>> mapEntry : existFileMap.entrySet()) {
             String tableName = mapEntry.getKey();
             SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
-            for (Map.Entry<Integer, FileChannel> fileChannelEntry : mapEntry.getValue().entrySet()) {
-                FileChannel fileChannel = fileChannelEntry.getValue();
+            for (File file : mapEntry.getValue()) {
+                FileChannel fileChannel = FileChannel.open(file.toPath(), READ);
                 if (fileChannel.size() == 0) {
                     continue;
                 }
@@ -113,10 +118,12 @@ public class IndexLoader {
                     System.exit(-1);
                 }
                 wrapper.getLock().unlock();
+
+                fileChannel.close();
             }
-            long end = System.currentTimeMillis();
-            System.out.println(">>> initIndexBuffer load exist index time: " + (end - start));
-            System.out.println(">>> initIndexBuffer load exist index data complete");
         }
+        long end = System.currentTimeMillis();
+        System.out.println(">>> initIndexBuffer load exist index time: " + (end - start));
+        System.out.println(">>> initIndexBuffer load exist index data complete");
     }
 }
