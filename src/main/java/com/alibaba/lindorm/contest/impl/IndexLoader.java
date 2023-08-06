@@ -3,15 +3,11 @@ package com.alibaba.lindorm.contest.impl;
 import com.alibaba.lindorm.contest.structs.ColumnValue;
 import com.alibaba.lindorm.contest.structs.Vin;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static java.nio.file.StandardOpenOption.READ;
 
 public class IndexLoader {
     private static final ConcurrentHashMap<String, ConcurrentHashMap<Vin, Index>> LATEST_INDEX_CACHE_MAP = new ConcurrentHashMap<>();
@@ -45,13 +41,12 @@ public class IndexLoader {
     public static void loadLatestIndex(FileManager fileManager, IndexLoaderTask indexLoaderTask) throws IOException {
         System.out.println(">>> initIndexBuffer load exist index data begin");
         long start = System.currentTimeMillis();
-        Map<String, List<File>> existFileMap = fileManager.getExistFile();
-        for (Map.Entry<String, List<File>> mapEntry : existFileMap.entrySet()) {
+        for (Map.Entry<String, Map<Vin, FileChannel>> mapEntry : fileManager.getReadFileMap().entrySet()) {
             String tableName = mapEntry.getKey();
             SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
-            for (File file : mapEntry.getValue()) {
-                FileChannel fileChannel = FileChannel.open(file.toPath(), READ);
-                if (fileChannel.size() == 0) {
+            for (Map.Entry<Vin, FileChannel> fileChannelEntry : mapEntry.getValue().entrySet()) {
+                FileChannel fileChannel = fileChannelEntry.getValue();
+                if (fileChannel == null || fileChannel.size() == 0) {
                     continue;
                 }
                 MappedByteBuffer dataByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
@@ -118,8 +113,6 @@ public class IndexLoader {
                     System.exit(-1);
                 }
                 wrapper.getLock().unlock();
-
-                fileChannel.close();
             }
         }
         long end = System.currentTimeMillis();

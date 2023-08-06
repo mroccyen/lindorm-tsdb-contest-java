@@ -72,10 +72,6 @@ public class DataQueryHandler {
             if (fileChannel == null || fileChannel.size() == 0) {
                 continue;
             }
-            if (fileChannel.size() == 0) {
-                fileChannel.close();
-                continue;
-            }
             Index latestIndex = IndexLoader.getLatestIndex(tableName, vin);
             if (latestIndex == null) {
                 return null;
@@ -127,7 +123,6 @@ public class DataQueryHandler {
                 }
             }
             sizeByteBuffer.clear();
-            fileChannel.close();
         }
         return new ArrayList<>(latestRowMap.values());
     }
@@ -142,11 +137,7 @@ public class DataQueryHandler {
         vinNameSet.add(vinReqStr);
 
         FileChannel fileChannel = fileManager.getReadFileChannel(tableName, vin);
-        if (fileChannel == null) {
-            return new ArrayList<>();
-        }
-        if (fileChannel.size() == 0) {
-            fileChannel.close();
+        if (fileChannel == null || fileChannel.size() == 0) {
             return new ArrayList<>();
         }
         MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
@@ -206,8 +197,6 @@ public class DataQueryHandler {
                 rowList.addAll(e.getValue());
             }
         }
-
-        fileChannel.close();
         return rowList;
     }
 }

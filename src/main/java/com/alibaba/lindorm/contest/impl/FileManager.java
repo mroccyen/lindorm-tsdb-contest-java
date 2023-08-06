@@ -16,6 +16,7 @@ import static java.nio.file.StandardOpenOption.READ;
 public class FileManager {
     private final Map<String, Map<Vin, FileChannel>> writeFileMap = new ConcurrentHashMap<>();
     private final Map<String, Map<Vin, Lock>> writeLockMap = new ConcurrentHashMap<>();
+    private final Map<String, Map<Vin, FileChannel>> readFileMap = new ConcurrentHashMap<>();
     private final File dataPath;
     private final Map<String, SchemaMeta> tableSchemaMetaMap = new ConcurrentHashMap<>();
 
@@ -28,6 +29,7 @@ public class FileManager {
         if (files != null) {
             for (File dir : files) {
                 String tableName = dir.getName();
+                Map<Vin, FileChannel> readFileChannelMap = new ConcurrentHashMap<>();
                 Map<Vin, FileChannel> writeFileChannelMap = new ConcurrentHashMap<>();
                 Map<Vin, Lock> writeFileLock = new ConcurrentHashMap<>();
                 File[] dataFiles = dir.listFiles();
@@ -36,6 +38,9 @@ public class FileManager {
                         String name = dataFile.getName();
                         Vin vin = new Vin(name.getBytes());
 
+                        FileChannel readFileChannel = FileChannel.open(dataFile.toPath(), READ);
+                        readFileChannelMap.put(vin, readFileChannel);
+
                         FileChannel writeFileChannel = FileChannel.open(dataFile.toPath(), APPEND);
                         writeFileChannelMap.put(vin, writeFileChannel);
 
@@ -43,26 +48,10 @@ public class FileManager {
                     }
                     writeFileMap.put(tableName, writeFileChannelMap);
                     writeLockMap.put(tableName, writeFileLock);
+                    readFileMap.put(tableName, readFileChannelMap);
                 }
             }
         }
-    }
-
-    public Map<String, List<File>> getExistFile() {
-        Map<String, List<File>> map = new HashMap<>();
-        File[] files = dataPath.listFiles();
-        if (files != null) {
-            for (File dir : files) {
-                String tableName = dir.getName();
-                File[] dataFiles = dir.listFiles();
-                List<File> result = new ArrayList<>();
-                if (dataFiles != null) {
-                    result.addAll(Arrays.asList(dataFiles));
-                }
-                map.put(tableName, result);
-            }
-        }
-        return map;
     }
 
     public FileChannel getWriteFilChannel(String tableName, Vin vin) throws IOException {
@@ -116,6 +105,15 @@ public class FileManager {
     }
 
     public FileChannel getReadFileChannel(String tableName, Vin vin) throws IOException {
+        Map<Vin, FileChannel> vinFileChannelMap = readFileMap.get(tableName);
+        if (vinFileChannelMap == null) {
+            return null;
+        }
+        FileChannel fileChannel = vinFileChannelMap.get(vin);
+        if (fileChannel != null) {
+            return fileChannel;
+        }
+
         String absolutePath = dataPath.getAbsolutePath();
         String folder = absolutePath + File.separator + tableName;
         File tablePath = new File(folder);
@@ -128,7 +126,9 @@ public class FileManager {
         if (!f.exists()) {
             return null;
         }
-        return FileChannel.open(f.toPath(), READ);
+        FileChannel channel = FileChannel.open(f.toPath(), READ);
+        vinFileChannelMap.put(vin, channel);
+        return channel;
     }
 
     public Lock getWriteLock(String tableName, Vin vin) {
@@ -153,8 +153,8 @@ public class FileManager {
         }
     }
 
-    public Map<String, Map<Vin, FileChannel>> getWriteFileMap() {
-        return writeFileMap;
+    public Map<String, Map<Vin, FileChannel>> getReadFileMap() {
+        return readFileMap;
     }
 
     public void initTableWriteLockMap(String tableName) {

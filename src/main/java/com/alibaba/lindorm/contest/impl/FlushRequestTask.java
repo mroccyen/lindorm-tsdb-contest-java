@@ -51,7 +51,7 @@ public class FlushRequestTask extends Thread {
     private void doWrite(List<WriteRequestWrapper> writeRequestWrapperList) throws IOException {
         //保存KV数据
         Iterator<WriteRequestWrapper> iterator = writeRequestWrapperList.iterator();
-        List<FileChannel> list = new ArrayList<>();
+        //List<FileChannel> list = new ArrayList<>();
         while (iterator.hasNext()) {
             WriteRequestWrapper writeRequestWrapper = iterator.next();
 
@@ -62,7 +62,7 @@ public class FlushRequestTask extends Thread {
                 Vin vin = row.getVin();
 
                 FileChannel dataWriteFileChanel = fileManager.getWriteFilChannel(tableName, vin);
-                list.add(dataWriteFileChanel);
+                //list.add(dataWriteFileChanel);
                 SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
                 //vin has 17 byte
                 dataWriteByteBuffer.put(vin.getVin());
