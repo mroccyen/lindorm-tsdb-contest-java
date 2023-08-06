@@ -115,7 +115,8 @@ public class IndexLoader {
                 }
                 wrapper.getLock().unlock();
                 size++;
-                //System.out.println(">>> initIndexBuffer complete load exist index data: " + new String(fileChannelEntry.getKey().getVin()));
+                System.out.println(">>> initIndexBuffer complete load exist index data: " + new String(fileChannelEntry.getKey().getVin()));
+                System.out.println(">>> initIndexBuffer complete load exist index size: " + size);
             }
             System.out.println(">>> table " + tableName + " complete load exist index size: " + size);
         }
