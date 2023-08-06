@@ -44,6 +44,7 @@ public class IndexLoader {
         for (Map.Entry<String, Map<Vin, FileChannel>> mapEntry : fileManager.getReadFileMap().entrySet()) {
             String tableName = mapEntry.getKey();
             SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
+            long size = 0;
             for (Map.Entry<Vin, FileChannel> fileChannelEntry : mapEntry.getValue().entrySet()) {
                 FileChannel fileChannel = fileChannelEntry.getValue();
                 if (fileChannel == null || fileChannel.size() == 0) {
@@ -113,7 +114,10 @@ public class IndexLoader {
                     System.exit(-1);
                 }
                 wrapper.getLock().unlock();
+                size++;
+                //System.out.println(">>> initIndexBuffer complete load exist index data: " + new String(fileChannelEntry.getKey().getVin()));
             }
+            System.out.println(">>> table " + tableName + " complete load exist index size: " + size);
         }
         long end = System.currentTimeMillis();
         System.out.println(">>> initIndexBuffer load exist index time: " + (end - start));
