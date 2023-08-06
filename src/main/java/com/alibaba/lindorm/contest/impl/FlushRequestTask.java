@@ -112,10 +112,10 @@ public class FlushRequestTask extends Thread {
             }
         }
 
-        for (FileChannel fileChannel : list) {
-            //刷盘
-            fileChannel.force(false);
-        }
+//        for (FileChannel fileChannel : list) {
+//            //刷盘
+//            fileChannel.force(false);
+//        }
 
         iterator = writeRequestWrapperList.iterator();
         while (iterator.hasNext()) {
