@@ -106,12 +106,11 @@ public class FileManager {
 
     public FileChannel getReadFileChannel(String tableName, Vin vin) throws IOException {
         Map<Vin, FileChannel> vinFileChannelMap = readFileMap.get(tableName);
-        if (vinFileChannelMap == null) {
-            return null;
-        }
-        FileChannel fileChannel = vinFileChannelMap.get(vin);
-        if (fileChannel != null) {
-            return fileChannel;
+        if (vinFileChannelMap != null) {
+            FileChannel fileChannel = vinFileChannelMap.get(vin);
+            if (fileChannel != null) {
+                return fileChannel;
+            }
         }
 
         String absolutePath = dataPath.getAbsolutePath();
@@ -127,7 +126,9 @@ public class FileManager {
             return null;
         }
         FileChannel channel = FileChannel.open(f.toPath(), READ);
+        vinFileChannelMap = new ConcurrentHashMap<>();
         vinFileChannelMap.put(vin, channel);
+        readFileMap.put(tableName, vinFileChannelMap);
         return channel;
     }
 
