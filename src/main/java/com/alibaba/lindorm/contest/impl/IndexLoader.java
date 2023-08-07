@@ -1,6 +1,5 @@
 package com.alibaba.lindorm.contest.impl;
 
-import com.alibaba.lindorm.contest.structs.ColumnValue;
 import com.alibaba.lindorm.contest.structs.Vin;
 
 import java.io.IOException;
@@ -41,87 +40,56 @@ public class IndexLoader {
     public static void loadLatestIndex(FileManager fileManager, IndexLoaderTask indexLoaderTask) throws IOException {
         System.out.println(">>> initIndexBuffer load exist index data begin");
         long start = System.currentTimeMillis();
-        for (Map.Entry<String, Map<Vin, FileChannel>> mapEntry : fileManager.getReadFileMap().entrySet()) {
+        for (Map.Entry<String, FileChannel> mapEntry : fileManager.getReadLatestIndexFileMap().entrySet()) {
             String tableName = mapEntry.getKey();
-            SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
-            long size = 0;
-            for (Map.Entry<Vin, FileChannel> fileChannelEntry : mapEntry.getValue().entrySet()) {
-                FileChannel fileChannel = fileChannelEntry.getValue();
-                if (fileChannel == null || fileChannel.size() == 0) {
-                    continue;
+            FileChannel fileChannel = mapEntry.getValue();
+            if (fileChannel == null || fileChannel.size() == 0) {
+                continue;
+            }
+            MappedByteBuffer dataByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
+            while (dataByteBuffer.hasRemaining()) {
+                byte[] vinByte = new byte[Vin.VIN_LENGTH];
+                for (int i = 0; i < Vin.VIN_LENGTH; i++) {
+                    vinByte[i] = dataByteBuffer.get();
                 }
-                MappedByteBuffer dataByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
-                long position = 0;
-                while (dataByteBuffer.hasRemaining()) {
-                    long p = 0;
-                    byte[] vinByte = new byte[Vin.VIN_LENGTH];
-                    for (int i = 0; i < Vin.VIN_LENGTH; i++) {
-                        vinByte[i] = dataByteBuffer.get();
-                    }
-                    p = p + Vin.VIN_LENGTH;
-                    long timestamp = dataByteBuffer.getLong();
-                    p = p + 8;
-                    for (int cI = 0; cI < schemaMeta.getColumnsNum(); ++cI) {
-                        ColumnValue.ColumnType cType = schemaMeta.getColumnsType().get(cI);
-                        switch (cType) {
-                            case COLUMN_TYPE_INTEGER:
-                                dataByteBuffer.getInt();
-                                p = p + 4;
-                                break;
-                            case COLUMN_TYPE_DOUBLE_FLOAT:
-                                dataByteBuffer.getDouble();
-                                p = p + 8;
-                                break;
-                            case COLUMN_TYPE_STRING:
-                                int length = dataByteBuffer.getInt();
-                                p = p + 4;
-                                for (int i = 0; i < length; i++) {
-                                    dataByteBuffer.get();
-                                }
-                                p = p + length;
-                                break;
-                            default:
-                                throw new IllegalStateException("Undefined column type, this is not expected");
-                        }
-                    }
-                    IndexLoadCompleteNotice notice = new IndexLoadCompleteNotice();
-                    notice.setComplete(false);
-                    notice.setTableName(tableName);
-                    notice.setOffset(position);
-                    notice.setTimestamp(timestamp);
-                    notice.setVin(vinByte);
-                    try {
-                        indexLoaderTask.getWriteRequestQueue().put(notice);
-                    } catch (InterruptedException e) {
-                        System.out.println(e.getMessage());
-                        System.exit(-1);
-                    }
-                    position = position + p;
-                }
-                IndexLoadCompleteWrapper wrapper = new IndexLoadCompleteWrapper();
-                wrapper.getLock().lock();
-                //通知等待完成
-                indexLoaderTask.waitComplete(wrapper);
-                //结束进行通知
+                long offset = dataByteBuffer.getLong();
+                long timestamp = dataByteBuffer.getLong();
                 IndexLoadCompleteNotice notice = new IndexLoadCompleteNotice();
-                notice.setComplete(true);
-                indexLoaderTask.getWriteRequestQueue().offer(notice);
+                notice.setComplete(false);
+                notice.setTableName(tableName);
+                notice.setOffset(offset);
+                notice.setTimestamp(timestamp);
+                notice.setVin(vinByte);
                 try {
-                    //等待索引数据加载完成
-                    wrapper.getCondition().await();
-                } catch (Exception e) {
+                    indexLoaderTask.getWriteRequestQueue().put(notice);
+                } catch (InterruptedException e) {
                     System.out.println(e.getMessage());
                     System.exit(-1);
                 }
-                wrapper.getLock().unlock();
-                size++;
-                System.out.println(">>> initIndexBuffer complete load exist index data: " + new String(fileChannelEntry.getKey().getVin()));
-                System.out.println(">>> initIndexBuffer complete load exist index size: " + size);
             }
-            System.out.println(">>> table " + tableName + " complete load exist index size: " + size);
+            IndexLoadCompleteWrapper wrapper = new IndexLoadCompleteWrapper();
+            wrapper.getLock().lock();
+            //通知等待完成
+            indexLoaderTask.waitComplete(wrapper);
+            //结束进行通知
+            IndexLoadCompleteNotice notice = new IndexLoadCompleteNotice();
+            notice.setComplete(true);
+            indexLoaderTask.getWriteRequestQueue().offer(notice);
+            try {
+                //等待索引数据加载完成
+                wrapper.getCondition().await();
+            } catch (Exception e) {
+                System.out.println(e.getMessage());
+                System.exit(-1);
+            }
+            wrapper.getLock().unlock();
         }
         long end = System.currentTimeMillis();
         System.out.println(">>> initIndexBuffer load exist index time: " + (end - start));
         System.out.println(">>> initIndexBuffer load exist index data complete");
+    }
+
+    public static ConcurrentHashMap<String, ConcurrentHashMap<Vin, Index>> getLatestIndexCacheMap() {
+        return LATEST_INDEX_CACHE_MAP;
     }
 }

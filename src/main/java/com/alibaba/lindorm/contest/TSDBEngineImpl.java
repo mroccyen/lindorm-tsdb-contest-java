@@ -21,6 +21,7 @@ public class TSDBEngineImpl extends TSDBEngine {
     private DataQueryHandler dataQueryHandler;
     private FileManager fileManager;
     private SchemaHandler schemaHandler;
+    private LatestIndexFlush latestIndexFlush;
 
     /**
      * This constructor's function signature should not be modified.
@@ -36,6 +37,7 @@ public class TSDBEngineImpl extends TSDBEngine {
         //初始化文件管理
         fileManager = new FileManager(getDataPath());
         fileManager.loadExistFile();
+        latestIndexFlush = new LatestIndexFlush(fileManager);
         //表信息处理
         schemaHandler = new SchemaHandler(fileManager, getDataPath());
         schemaHandler.loadTableInfo();
@@ -64,6 +66,7 @@ public class TSDBEngineImpl extends TSDBEngine {
     public void shutdown() {
         writeTask.shutdown();
         indexLoaderTask.shutdown();
+        latestIndexFlush.flushLatestIndex();
         IndexLoader.shutdown();
         fileManager.shutdown();
         schemaHandler.flushTableInfo();

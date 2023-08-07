@@ -14,11 +14,13 @@ import static java.nio.file.StandardOpenOption.APPEND;
 import static java.nio.file.StandardOpenOption.READ;
 
 public class FileManager {
-    private final Map<String, Map<Vin, FileChannel>> writeFileMap = new ConcurrentHashMap<>();
-    private final Map<String, Map<Vin, Lock>> writeLockMap = new ConcurrentHashMap<>();
-    private final Map<String, Map<Vin, FileChannel>> readFileMap = new ConcurrentHashMap<>();
+    private Map<String, Map<Vin, FileChannel>> writeFileMap = new ConcurrentHashMap<>();
+    private Map<String, Map<Vin, Lock>> writeLockMap = new ConcurrentHashMap<>();
+    private Map<String, Map<Vin, FileChannel>> readFileMap = new ConcurrentHashMap<>();
     private final File dataPath;
     private final Map<String, SchemaMeta> tableSchemaMetaMap = new ConcurrentHashMap<>();
+    private Map<String, FileChannel> writeLatestIndexFileMap = new ConcurrentHashMap<>();
+    private Map<String, FileChannel> readLatestIndexFileMap = new ConcurrentHashMap<>();
 
     public FileManager(File dataPath) {
         this.dataPath = dataPath;
@@ -36,6 +38,11 @@ public class FileManager {
                 if (dataFiles != null) {
                     for (File dataFile : dataFiles) {
                         String name = dataFile.getName();
+                        if (name.equals(CommonSetting.LATEST_INDEX_FILE_NAME)) {
+                            FileChannel latestIndexFileChannel = FileChannel.open(dataFile.toPath(), READ);
+                            readLatestIndexFileMap.put(tableName, latestIndexFileChannel);
+                            continue;
+                        }
                         Vin vin = new Vin(name.getBytes());
 
                         FileChannel readFileChannel = FileChannel.open(dataFile.toPath(), READ);
@@ -149,7 +156,27 @@ public class FileManager {
                     file.getValue().close();
                 }
             }
+            for (Map.Entry<String, Map<Vin, FileChannel>> e : readFileMap.entrySet()) {
+                for (Map.Entry<Vin, FileChannel> file : e.getValue().entrySet()) {
+                    file.getValue().close();
+                }
+            }
+            for (Map.Entry<String, FileChannel> file : writeLatestIndexFileMap.entrySet()) {
+                file.getValue().close();
+            }
+            for (Map.Entry<String, FileChannel> file : readLatestIndexFileMap.entrySet()) {
+                file.getValue().close();
+            }
+            writeFileMap = null;
+            writeLockMap = null;
+            readFileMap = null;
+            writeLatestIndexFileMap = null;
+            readLatestIndexFileMap = null;
         } catch (Exception e) {
+            System.out.println(">>> " + Thread.currentThread().getName() + " FileManager happen exception: " + e.getMessage());
+            for (StackTraceElement stackTraceElement : e.getStackTrace()) {
+                System.out.println(">>> " + Thread.currentThread().getName() + " FileManager happen exception: " + stackTraceElement.toString());
+            }
             System.exit(-1);
         }
     }
@@ -172,5 +199,32 @@ public class FileManager {
 
     public Map<String, SchemaMeta> getTableSchemaMetaMap() {
         return tableSchemaMetaMap;
+    }
+
+    public FileChannel getWriteLatestIndexFile(String tableName) throws IOException {
+        if (writeLatestIndexFileMap.containsKey(tableName)) {
+            return writeLatestIndexFileMap.get(tableName);
+        }
+        String absolutePath = dataPath.getAbsolutePath();
+        String folder = absolutePath + File.separator + tableName;
+        File tablePath = new File(folder);
+        if (!tablePath.exists()) {
+            return null;
+        }
+        String s = folder + File.separator + CommonSetting.LATEST_INDEX_FILE_NAME;
+        File f = new File(s);
+        if (!f.exists()) {
+            f.createNewFile();
+        } else {
+            f.delete();
+            f.createNewFile();
+        }
+        FileChannel channel = FileChannel.open(f.toPath(), APPEND);
+        writeLatestIndexFileMap.put(tableName, channel);
+        return channel;
+    }
+
+    public Map<String, FileChannel> getReadLatestIndexFileMap() {
+        return readLatestIndexFileMap;
     }
 }

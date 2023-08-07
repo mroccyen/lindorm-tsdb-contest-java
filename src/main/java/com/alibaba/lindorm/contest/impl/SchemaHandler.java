@@ -7,7 +7,6 @@ import java.io.*;
 import java.util.Map;
 
 public class SchemaHandler {
-    private static final String SCHEMA_FILE = "schema.txt";
     private final FileManager fileManager;
     private final File dataPath;
 
@@ -28,7 +27,7 @@ public class SchemaHandler {
     }
 
     public void loadTableInfo() throws IOException {
-        File schemaFile = new File(dataPath, SCHEMA_FILE);
+        File schemaFile = new File(dataPath, CommonSetting.SCHEMA_FILE);
         if (!schemaFile.exists() || !schemaFile.isFile()) {
             System.out.println("Connect new database with empty pre-written data");
             return;
@@ -57,7 +56,7 @@ public class SchemaHandler {
 
     public void flushTableInfo() {
         try {
-            File schemaFile = new File(dataPath, SCHEMA_FILE);
+            File schemaFile = new File(dataPath, CommonSetting.SCHEMA_FILE);
             schemaFile.delete();
             schemaFile.createNewFile();
             BufferedWriter writer = new BufferedWriter(new FileWriter(schemaFile));
