@@ -1,13 +1,12 @@
 package com.alibaba.lindorm.contest.impl.schema;
 
-import com.alibaba.lindorm.contest.structs.ColumnValue;
-
 import java.util.ArrayList;
 
 public class SchemaMeta {
     private int columnsNum = 0;
-    private ArrayList<String> columnsName = new ArrayList<>();
-    private ArrayList<ColumnValue.ColumnType> columnsType = new ArrayList<>();
+    private ArrayList<String> stringColumnsName = new ArrayList<>();
+    private ArrayList<String> integerColumnsName = new ArrayList<>();
+    private ArrayList<String> doubleColumnsName = new ArrayList<>();
 
     public int getColumnsNum() {
         return columnsNum;
@@ -17,19 +16,27 @@ public class SchemaMeta {
         this.columnsNum = columnsNum;
     }
 
-    public ArrayList<String> getColumnsName() {
-        return columnsName;
+    public ArrayList<String> getStringColumnsName() {
+        return stringColumnsName;
     }
 
-    public void setColumnsName(ArrayList<String> columnsName) {
-        this.columnsName = columnsName;
+    public void setStringColumnsName(ArrayList<String> stringColumnsName) {
+        this.stringColumnsName = stringColumnsName;
     }
 
-    public ArrayList<ColumnValue.ColumnType> getColumnsType() {
-        return columnsType;
+    public ArrayList<String> getIntegerColumnsName() {
+        return integerColumnsName;
     }
 
-    public void setColumnsType(ArrayList<ColumnValue.ColumnType> columnsType) {
-        this.columnsType = columnsType;
+    public void setIntegerColumnsName(ArrayList<String> integerColumnsName) {
+        this.integerColumnsName = integerColumnsName;
+    }
+
+    public ArrayList<String> getDoubleColumnsName() {
+        return doubleColumnsName;
+    }
+
+    public void setDoubleColumnsName(ArrayList<String> doubleColumnsName) {
+        this.doubleColumnsName = doubleColumnsName;
     }
 }

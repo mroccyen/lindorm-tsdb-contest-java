@@ -5,7 +5,12 @@ import com.alibaba.lindorm.contest.impl.file.FileManager;
 import com.alibaba.lindorm.contest.structs.ColumnValue;
 import com.alibaba.lindorm.contest.structs.Schema;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.Map;
 
 public class SchemaHandler {
@@ -22,8 +27,20 @@ public class SchemaHandler {
         SchemaMeta schemaMeta = new SchemaMeta();
         schemaMeta.setColumnsNum(columnTypeMap.size());
         for (Map.Entry<String, ColumnValue.ColumnType> entry : columnTypeMap.entrySet()) {
-            schemaMeta.getColumnsName().add(entry.getKey());
-            schemaMeta.getColumnsType().add(entry.getValue());
+            ColumnValue.ColumnType cType = entry.getValue();
+            switch (cType) {
+                case COLUMN_TYPE_INTEGER:
+                    schemaMeta.getIntegerColumnsName().add(entry.getKey());
+                    break;
+                case COLUMN_TYPE_DOUBLE_FLOAT:
+                    schemaMeta.getDoubleColumnsName().add(entry.getKey());
+                    break;
+                case COLUMN_TYPE_STRING:
+                    schemaMeta.getStringColumnsName().add(entry.getKey());
+                    break;
+                default:
+                    throw new IllegalStateException("Undefined column type, this is not expected");
+            }
         }
         fileManager.addSchemaMeta(tableName, schemaMeta);
     }
@@ -48,8 +65,21 @@ public class SchemaHandler {
                 }
                 int index = 2;
                 for (int i = 0; i < columnsNum; i++) {
-                    schemaMeta.getColumnsName().add(parts[index++]);
-                    schemaMeta.getColumnsType().add(ColumnValue.ColumnType.valueOf(parts[index++]));
+                    String columnName = parts[index++];
+                    ColumnValue.ColumnType columnType = ColumnValue.ColumnType.valueOf(parts[index++]);
+                    switch (columnType) {
+                        case COLUMN_TYPE_INTEGER:
+                            schemaMeta.getIntegerColumnsName().add(columnName);
+                            break;
+                        case COLUMN_TYPE_DOUBLE_FLOAT:
+                            schemaMeta.getDoubleColumnsName().add(columnName);
+                            break;
+                        case COLUMN_TYPE_STRING:
+                            schemaMeta.getStringColumnsName().add(columnName);
+                            break;
+                        default:
+                            throw new IllegalStateException("Undefined column type, this is not expected");
+                    }
                 }
                 fileManager.addSchemaMeta(tableName, schemaMeta);
             }
@@ -77,11 +107,23 @@ public class SchemaHandler {
         sb.append(table);
         sb.append(",");
         sb.append(schemaMeta.getColumnsNum());
-        for (int i = 0; i < schemaMeta.getColumnsNum(); ++i) {
+        for (int i = 0; i < schemaMeta.getIntegerColumnsName().size(); ++i) {
             sb.append(",")
-                .append(schemaMeta.getColumnsName().get(i))
+                .append(schemaMeta.getIntegerColumnsName().get(i))
                 .append(",")
-                .append(schemaMeta.getColumnsType().get(i));
+                .append(ColumnValue.ColumnType.COLUMN_TYPE_INTEGER);
+        }
+        for (int i = 0; i < schemaMeta.getDoubleColumnsName().size(); ++i) {
+            sb.append(",")
+                .append(schemaMeta.getDoubleColumnsName().get(i))
+                .append(",")
+                .append(ColumnValue.ColumnType.COLUMN_TYPE_DOUBLE_FLOAT);
+        }
+        for (int i = 0; i < schemaMeta.getStringColumnsName().size(); ++i) {
+            sb.append(",")
+                .append(schemaMeta.getStringColumnsName().get(i))
+                .append(",")
+                .append(ColumnValue.ColumnType.COLUMN_TYPE_STRING);
         }
         return sb.toString();
     }

@@ -90,30 +90,31 @@ public class DataQueryHandler {
             String vinStr = new String(vinBytes);
             long t = sizeByteBuffer.getLong();
             Map<String, ColumnValue> columns = new HashMap<>();
-            for (int cI = 0; cI < schemaMeta.getColumnsNum(); ++cI) {
-                String cName = schemaMeta.getColumnsName().get(cI);
-                ColumnValue.ColumnType cType = schemaMeta.getColumnsType().get(cI);
-                ColumnValue cVal;
-                switch (cType) {
-                    case COLUMN_TYPE_INTEGER:
-                        int intVal = sizeByteBuffer.getInt();
-                        cVal = new ColumnValue.IntegerColumn(intVal);
-                        break;
-                    case COLUMN_TYPE_DOUBLE_FLOAT:
-                        double doubleVal = sizeByteBuffer.getDouble();
-                        cVal = new ColumnValue.DoubleFloatColumn(doubleVal);
-                        break;
-                    case COLUMN_TYPE_STRING:
-                        int length = sizeByteBuffer.getInt();
-                        byte[] bytes = new byte[length];
-                        for (int i = 0; i < length; i++) {
-                            bytes[i] = sizeByteBuffer.get();
-                        }
-                        cVal = new ColumnValue.StringColumn(ByteBuffer.wrap(bytes));
-                        break;
-                    default:
-                        throw new IllegalStateException("Undefined column type, this is not expected");
+
+            ArrayList<String> integerColumnsNameList = schemaMeta.getIntegerColumnsName();
+            for (String cName : integerColumnsNameList) {
+                int intVal = sizeByteBuffer.getInt();
+                ColumnValue cVal = new ColumnValue.IntegerColumn(intVal);
+                if (requestedColumns.contains(cName)) {
+                    columns.put(cName, cVal);
                 }
+            }
+            ArrayList<String> doubleColumnsNameList = schemaMeta.getDoubleColumnsName();
+            for (String cName : doubleColumnsNameList) {
+                double doubleVal = sizeByteBuffer.getDouble();
+                ColumnValue cVal = new ColumnValue.DoubleFloatColumn(doubleVal);
+                if (requestedColumns.contains(cName)) {
+                    columns.put(cName, cVal);
+                }
+            }
+            ArrayList<String> stringColumnsNameList = schemaMeta.getStringColumnsName();
+            for (String cName : stringColumnsNameList) {
+                int length = sizeByteBuffer.getInt();
+                byte[] bytes = new byte[length];
+                for (int i = 0; i < length; i++) {
+                    bytes[i] = sizeByteBuffer.get();
+                }
+                ColumnValue cVal = new ColumnValue.StringColumn(ByteBuffer.wrap(bytes));
                 if (requestedColumns.contains(cName)) {
                     columns.put(cName, cVal);
                 }
@@ -153,34 +154,36 @@ public class DataQueryHandler {
             String vinStr = new String(vinBytes);
             long t = sizeByteBuffer.getLong();
             Map<String, ColumnValue> columns = new HashMap<>();
-            for (int cI = 0; cI < schemaMeta.getColumnsNum(); ++cI) {
-                String cName = schemaMeta.getColumnsName().get(cI);
-                ColumnValue.ColumnType cType = schemaMeta.getColumnsType().get(cI);
-                ColumnValue cVal;
-                switch (cType) {
-                    case COLUMN_TYPE_INTEGER:
-                        int intVal = sizeByteBuffer.getInt();
-                        cVal = new ColumnValue.IntegerColumn(intVal);
-                        break;
-                    case COLUMN_TYPE_DOUBLE_FLOAT:
-                        double doubleVal = sizeByteBuffer.getDouble();
-                        cVal = new ColumnValue.DoubleFloatColumn(doubleVal);
-                        break;
-                    case COLUMN_TYPE_STRING:
-                        int length = sizeByteBuffer.getInt();
-                        byte[] bytes = new byte[length];
-                        for (int i = 0; i < length; i++) {
-                            bytes[i] = sizeByteBuffer.get();
-                        }
-                        cVal = new ColumnValue.StringColumn(ByteBuffer.wrap(bytes));
-                        break;
-                    default:
-                        throw new IllegalStateException("Undefined column type, this is not expected");
-                }
+
+            ArrayList<String> integerColumnsNameList = schemaMeta.getIntegerColumnsName();
+            for (String cName : integerColumnsNameList) {
+                int intVal = sizeByteBuffer.getInt();
+                ColumnValue cVal = new ColumnValue.IntegerColumn(intVal);
                 if (requestedColumns.contains(cName)) {
                     columns.put(cName, cVal);
                 }
             }
+            ArrayList<String> doubleColumnsNameList = schemaMeta.getDoubleColumnsName();
+            for (String cName : doubleColumnsNameList) {
+                double doubleVal = sizeByteBuffer.getDouble();
+                ColumnValue cVal = new ColumnValue.DoubleFloatColumn(doubleVal);
+                if (requestedColumns.contains(cName)) {
+                    columns.put(cName, cVal);
+                }
+            }
+            ArrayList<String> stringColumnsNameList = schemaMeta.getStringColumnsName();
+            for (String cName : stringColumnsNameList) {
+                int length = sizeByteBuffer.getInt();
+                byte[] bytes = new byte[length];
+                for (int i = 0; i < length; i++) {
+                    bytes[i] = sizeByteBuffer.get();
+                }
+                ColumnValue cVal = new ColumnValue.StringColumn(ByteBuffer.wrap(bytes));
+                if (requestedColumns.contains(cName)) {
+                    columns.put(cName, cVal);
+                }
+            }
+
             if (vinNameSet.contains(vinStr)) {
                 //范围查询
                 if (t >= timeLowerBound && t < timeUpperBound) {

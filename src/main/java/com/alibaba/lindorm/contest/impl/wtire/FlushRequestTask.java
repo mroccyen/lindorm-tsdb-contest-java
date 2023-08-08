@@ -71,26 +71,27 @@ public class FlushRequestTask extends Thread {
                 //vin has 17 byte
                 dataWriteByteBuffer.put(vin.getVin());
                 dataWriteByteBuffer.putLong(row.getTimestamp());
-                for (int i = 0; i < schemaMeta.getColumnsNum(); ++i) {
-                    String cName = schemaMeta.getColumnsName().get(i);
+
+                ArrayList<String> integerColumnsNameList = schemaMeta.getIntegerColumnsName();
+                for (String cName : integerColumnsNameList) {
                     ColumnValue cVal = row.getColumns().get(cName);
-                    switch (cVal.getColumnType()) {
-                        case COLUMN_TYPE_STRING:
-                            ColumnValue.StringColumn stringColumn = (ColumnValue.StringColumn) cVal;
-                            dataWriteByteBuffer.putInt(stringColumn.getStringValue().remaining());
-                            dataWriteByteBuffer.put(stringColumn.getStringValue());
-                            break;
-                        case COLUMN_TYPE_INTEGER:
-                            ColumnValue.IntegerColumn integerColumn = (ColumnValue.IntegerColumn) cVal;
-                            dataWriteByteBuffer.putInt(integerColumn.getIntegerValue());
-                            break;
-                        case COLUMN_TYPE_DOUBLE_FLOAT:
-                            ColumnValue.DoubleFloatColumn doubleFloatColumn = (ColumnValue.DoubleFloatColumn) cVal;
-                            dataWriteByteBuffer.putDouble(doubleFloatColumn.getDoubleFloatValue());
-                            break;
-                        default:
-                            throw new IllegalStateException("Invalid column type");
-                    }
+                    ColumnValue.IntegerColumn integerColumn = (ColumnValue.IntegerColumn) cVal;
+                    dataWriteByteBuffer.putInt(integerColumn.getIntegerValue());
+                }
+
+                ArrayList<String> doubleColumnsNameList = schemaMeta.getDoubleColumnsName();
+                for (String cName : doubleColumnsNameList) {
+                    ColumnValue cVal = row.getColumns().get(cName);
+                    ColumnValue.DoubleFloatColumn doubleFloatColumn = (ColumnValue.DoubleFloatColumn) cVal;
+                    dataWriteByteBuffer.putDouble(doubleFloatColumn.getDoubleFloatValue());
+                }
+
+                ArrayList<String> stringColumnsNameList = schemaMeta.getStringColumnsName();
+                for (String cName : stringColumnsNameList) {
+                    ColumnValue cVal = row.getColumns().get(cName);
+                    ColumnValue.StringColumn stringColumn = (ColumnValue.StringColumn) cVal;
+                    dataWriteByteBuffer.putInt(stringColumn.getStringValue().remaining());
+                    dataWriteByteBuffer.put(stringColumn.getStringValue());
                 }
 
                 //获得写文件锁
