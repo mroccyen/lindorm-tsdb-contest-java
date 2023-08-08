@@ -1,4 +1,7 @@
-package com.alibaba.lindorm.contest.impl;
+package com.alibaba.lindorm.contest.impl.wtire;
+
+import com.alibaba.lindorm.contest.impl.common.CommonSetting;
+import com.alibaba.lindorm.contest.impl.file.FileManager;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -1,5 +1,7 @@
-package com.alibaba.lindorm.contest.impl;
+package com.alibaba.lindorm.contest.impl.file;
 
+import com.alibaba.lindorm.contest.impl.schema.SchemaMeta;
+import com.alibaba.lindorm.contest.impl.common.CommonSetting;
 import com.alibaba.lindorm.contest.structs.Vin;
 
 import java.io.File;

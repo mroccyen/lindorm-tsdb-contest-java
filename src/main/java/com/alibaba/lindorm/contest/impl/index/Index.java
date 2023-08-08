@@ -1,4 +1,4 @@
-package com.alibaba.lindorm.contest.impl;
+package com.alibaba.lindorm.contest.impl.index;
 
 public class Index {
     private long offset;

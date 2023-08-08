@@ -1,5 +1,9 @@
-package com.alibaba.lindorm.contest.impl;
+package com.alibaba.lindorm.contest.impl.wtire;
 
+import com.alibaba.lindorm.contest.impl.index.Index;
+import com.alibaba.lindorm.contest.impl.index.IndexLoader;
+import com.alibaba.lindorm.contest.impl.schema.SchemaMeta;
+import com.alibaba.lindorm.contest.impl.file.FileManager;
 import com.alibaba.lindorm.contest.structs.ColumnValue;
 import com.alibaba.lindorm.contest.structs.Row;
 import com.alibaba.lindorm.contest.structs.Vin;

@@ -1,5 +1,7 @@
-package com.alibaba.lindorm.contest.impl;
+package com.alibaba.lindorm.contest.impl.schema;
 
+import com.alibaba.lindorm.contest.impl.common.CommonSetting;
+import com.alibaba.lindorm.contest.impl.file.FileManager;
 import com.alibaba.lindorm.contest.structs.ColumnValue;
 import com.alibaba.lindorm.contest.structs.Schema;
 

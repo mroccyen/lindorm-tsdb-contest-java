@@ -1,4 +1,4 @@
-package com.alibaba.lindorm.contest.impl;
+package com.alibaba.lindorm.contest.impl.schema;
 
 import com.alibaba.lindorm.contest.structs.ColumnValue;
 

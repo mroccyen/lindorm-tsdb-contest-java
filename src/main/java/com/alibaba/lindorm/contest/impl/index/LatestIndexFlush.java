@@ -1,5 +1,6 @@
-package com.alibaba.lindorm.contest.impl;
+package com.alibaba.lindorm.contest.impl.index;
 
+import com.alibaba.lindorm.contest.impl.file.FileManager;
 import com.alibaba.lindorm.contest.structs.Vin;
 
 import java.nio.ByteBuffer;
