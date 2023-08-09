@@ -73,6 +73,7 @@ public class MyEvaluationSample {
             buffer.put((byte) 70);
             buffer.put((byte) 71);
             buffer.put((byte) 72);
+            buffer.flip();
             Map<String, ColumnValue> columns1 = new HashMap<>();
             columns1.put("col1", new ColumnValue.IntegerColumn(123));
             columns1.put("col2", new ColumnValue.DoubleFloatColumn(1.23));
@@ -110,7 +111,6 @@ public class MyEvaluationSample {
             // Stage3: overwrite
             tsdbEngineSample.connect();
 
-            buffer.flip();
             Map<String, ColumnValue> columns = new HashMap<>();
             columns.put("col1", new ColumnValue.IntegerColumn(321));
             columns.put("col2", new ColumnValue.DoubleFloatColumn(1.23));
