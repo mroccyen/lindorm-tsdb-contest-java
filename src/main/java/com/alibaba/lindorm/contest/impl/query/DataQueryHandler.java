@@ -1,5 +1,6 @@
 package com.alibaba.lindorm.contest.impl.query;
 
+import com.alibaba.lindorm.contest.impl.compress.DeflaterUtils;
 import com.alibaba.lindorm.contest.impl.file.FileManager;
 import com.alibaba.lindorm.contest.impl.index.Index;
 import com.alibaba.lindorm.contest.impl.index.IndexLoader;
@@ -108,12 +109,23 @@ public class DataQueryHandler {
                 }
             }
             ArrayList<String> stringColumnsNameList = schemaMeta.getStringColumnsName();
+            List<Integer> stringLengthList = new ArrayList<>();
             for (String cName : stringColumnsNameList) {
                 int length = sizeByteBuffer.getInt();
+                stringLengthList.add(length);
+            }
+            int stringValueLength = sizeByteBuffer.getInt();
+            byte[] stringBytes = new byte[stringValueLength];
+            sizeByteBuffer.get(stringBytes);
+            byte[] unzipBytes = DeflaterUtils.unzipString(stringBytes);
+            ByteBuffer buffer = ByteBuffer.wrap(unzipBytes);
+            for (int i = 0; i < stringLengthList.size(); i++) {
+                int length = stringLengthList.get(i);
                 byte[] bytes = new byte[length];
-                for (int i = 0; i < length; i++) {
-                    bytes[i] = sizeByteBuffer.get();
+                for (int j = 0; j < length; j++) {
+                    bytes[j] = buffer.get();
                 }
+                String cName = stringColumnsNameList.get(i);
                 ColumnValue cVal = new ColumnValue.StringColumn(ByteBuffer.wrap(bytes));
                 if (requestedColumns.contains(cName)) {
                     columns.put(cName, cVal);
@@ -172,12 +184,23 @@ public class DataQueryHandler {
                 }
             }
             ArrayList<String> stringColumnsNameList = schemaMeta.getStringColumnsName();
+            List<Integer> stringLengthList = new ArrayList<>();
             for (String cName : stringColumnsNameList) {
                 int length = sizeByteBuffer.getInt();
+                stringLengthList.add(length);
+            }
+            int stringValueLength = sizeByteBuffer.getInt();
+            byte[] stringBytes = new byte[stringValueLength];
+            sizeByteBuffer.get(stringBytes);
+            byte[] unzipBytes = DeflaterUtils.unzipString(stringBytes);
+            ByteBuffer buffer = ByteBuffer.wrap(unzipBytes);
+            for (int i = 0; i < stringLengthList.size(); i++) {
+                int length = stringLengthList.get(i);
                 byte[] bytes = new byte[length];
-                for (int i = 0; i < length; i++) {
-                    bytes[i] = sizeByteBuffer.get();
+                for (int j = 0; j < length; j++) {
+                    bytes[j] = buffer.get();
                 }
+                String cName = stringColumnsNameList.get(i);
                 ColumnValue cVal = new ColumnValue.StringColumn(ByteBuffer.wrap(bytes));
                 if (requestedColumns.contains(cName)) {
                     columns.put(cName, cVal);

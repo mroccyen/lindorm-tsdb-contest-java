@@ -1,5 +1,6 @@
 package com.alibaba.lindorm.contest.impl.wtire;
 
+import com.alibaba.lindorm.contest.impl.compress.DeflaterUtils;
 import com.alibaba.lindorm.contest.impl.index.Index;
 import com.alibaba.lindorm.contest.impl.index.IndexLoader;
 import com.alibaba.lindorm.contest.impl.schema.SchemaMeta;
@@ -87,12 +88,23 @@ public class FlushRequestTask extends Thread {
                 }
 
                 ArrayList<String> stringColumnsNameList = schemaMeta.getStringColumnsName();
+                List<Byte> stringByteList = new ArrayList<>();
                 for (String cName : stringColumnsNameList) {
                     ColumnValue cVal = row.getColumns().get(cName);
                     ColumnValue.StringColumn stringColumn = (ColumnValue.StringColumn) cVal;
-                    dataWriteByteBuffer.putInt(stringColumn.getStringValue().remaining());
-                    dataWriteByteBuffer.put(stringColumn.getStringValue());
+                    ByteBuffer stringValue = stringColumn.getStringValue();
+                    dataWriteByteBuffer.putInt(stringValue.remaining());
+                    for (byte b : stringValue.array()) {
+                        stringByteList.add(b);
+                    }
                 }
+                byte[] bytes = new byte[stringByteList.size()];
+                for (int i = 0; i < stringByteList.size(); i++) {
+                    bytes[i] = stringByteList.get(i);
+                }
+                byte[] zipBytes = DeflaterUtils.zipString(bytes);
+                dataWriteByteBuffer.putInt(zipBytes.length);
+                dataWriteByteBuffer.put(zipBytes);
 
                 //获得写文件锁
                 Lock writeLock = fileManager.getWriteLock(tableName, vin);
