@@ -1,10 +1,10 @@
 package com.alibaba.lindorm.contest.impl.wtire;
 
-import com.alibaba.lindorm.contest.impl.compress.DeflaterUtils;
+import com.alibaba.lindorm.contest.impl.file.FileManager;
 import com.alibaba.lindorm.contest.impl.index.Index;
 import com.alibaba.lindorm.contest.impl.index.IndexLoader;
 import com.alibaba.lindorm.contest.impl.schema.SchemaMeta;
-import com.alibaba.lindorm.contest.impl.file.FileManager;
+import com.alibaba.lindorm.contest.impl.store.ByteBuffersDataOutput;
 import com.alibaba.lindorm.contest.structs.ColumnValue;
 import com.alibaba.lindorm.contest.structs.Row;
 import com.alibaba.lindorm.contest.structs.Vin;
@@ -13,21 +13,23 @@ import com.alibaba.lindorm.contest.structs.WriteRequest;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 
 public class FlushRequestTask extends Thread {
-    private final ByteBuffer dataWriteByteBuffer;
     private final FileManager fileManager;
     private boolean stop = false;
     private final HandleRequestTask handleRequestTask;
+    private final ByteBuffersDataOutput byteBuffersDataOutput;
 
     public FlushRequestTask(FileManager fileManager, HandleRequestTask handleRequestTask) {
         this.handleRequestTask = handleRequestTask;
         this.fileManager = fileManager;
-        //每个线程有10M缓冲区用于写数据
-        dataWriteByteBuffer = ByteBuffer.allocate(1024 * 1024 * 10);
+        byteBuffersDataOutput = new ByteBuffersDataOutput();
     }
 
     public void shutdown() {
@@ -56,7 +58,6 @@ public class FlushRequestTask extends Thread {
     private void doWrite(List<WriteRequestWrapper> writeRequestWrapperList) throws IOException {
         //保存KV数据
         Iterator<WriteRequestWrapper> iterator = writeRequestWrapperList.iterator();
-        List<FileChannel> list = new ArrayList<>();
         while (iterator.hasNext()) {
             WriteRequestWrapper writeRequestWrapper = iterator.next();
 
@@ -67,44 +68,35 @@ public class FlushRequestTask extends Thread {
                 Vin vin = row.getVin();
 
                 FileChannel dataWriteFileChanel = fileManager.getWriteFilChannel(tableName, vin);
-                list.add(dataWriteFileChanel);
                 SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
                 //vin has 17 byte
-                dataWriteByteBuffer.put(vin.getVin());
-                dataWriteByteBuffer.putLong(row.getTimestamp());
+                byteBuffersDataOutput.writeBytes(vin.getVin());
+                byteBuffersDataOutput.writeVLong(row.getTimestamp());
 
                 ArrayList<String> integerColumnsNameList = schemaMeta.getIntegerColumnsName();
                 for (String cName : integerColumnsNameList) {
                     ColumnValue cVal = row.getColumns().get(cName);
                     ColumnValue.IntegerColumn integerColumn = (ColumnValue.IntegerColumn) cVal;
-                    dataWriteByteBuffer.putInt(integerColumn.getIntegerValue());
+                    byteBuffersDataOutput.writeVInt(integerColumn.getIntegerValue());
                 }
 
                 ArrayList<String> doubleColumnsNameList = schemaMeta.getDoubleColumnsName();
                 for (String cName : doubleColumnsNameList) {
                     ColumnValue cVal = row.getColumns().get(cName);
                     ColumnValue.DoubleFloatColumn doubleFloatColumn = (ColumnValue.DoubleFloatColumn) cVal;
-                    dataWriteByteBuffer.putDouble(doubleFloatColumn.getDoubleFloatValue());
+                    byteBuffersDataOutput.writeZDouble(doubleFloatColumn.getDoubleFloatValue());
                 }
 
                 ArrayList<String> stringColumnsNameList = schemaMeta.getStringColumnsName();
-                List<Byte> stringByteList = new ArrayList<>();
+                StringBuilder builder = new StringBuilder();
                 for (String cName : stringColumnsNameList) {
                     ColumnValue cVal = row.getColumns().get(cName);
                     ColumnValue.StringColumn stringColumn = (ColumnValue.StringColumn) cVal;
                     ByteBuffer stringValue = stringColumn.getStringValue();
-                    dataWriteByteBuffer.putInt(stringValue.remaining());
-                    for (byte b : stringValue.array()) {
-                        stringByteList.add(b);
-                    }
+                    byteBuffersDataOutput.writeVInt(stringValue.remaining());
+                    builder.append(new String(stringValue.array()));
                 }
-                byte[] bytes = new byte[stringByteList.size()];
-                for (int i = 0; i < stringByteList.size(); i++) {
-                    bytes[i] = stringByteList.get(i);
-                }
-                byte[] zipBytes = DeflaterUtils.zipString(bytes);
-                dataWriteByteBuffer.putInt(zipBytes.length);
-                dataWriteByteBuffer.put(zipBytes);
+                byteBuffersDataOutput.writeString(builder.toString());
 
                 //获得写文件锁
                 Lock writeLock = fileManager.getWriteLock(tableName, vin);
@@ -116,8 +108,7 @@ public class FlushRequestTask extends Thread {
                 index.setRowKey(vin.getVin());
                 index.setLatestTimestamp(row.getTimestamp());
 
-                dataWriteByteBuffer.flip();
-                dataWriteFileChanel.write(dataWriteByteBuffer);
+                dataWriteFileChanel.write(byteBuffersDataOutput.toBufferList().get(0));
 
                 //add index
                 IndexLoader.offerLatestIndex(tableName, vin, index);
@@ -125,14 +116,9 @@ public class FlushRequestTask extends Thread {
                 //释放写文件锁
                 writeLock.unlock();
 
-                dataWriteByteBuffer.clear();
+                byteBuffersDataOutput.reset();
             }
         }
-
-//        for (FileChannel fileChannel : list) {
-//            //刷盘
-//            fileChannel.force(false);
-//        }
 
         iterator = writeRequestWrapperList.iterator();
         while (iterator.hasNext()) {

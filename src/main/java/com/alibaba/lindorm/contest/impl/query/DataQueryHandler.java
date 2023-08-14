@@ -1,17 +1,28 @@
 package com.alibaba.lindorm.contest.impl.query;
 
-import com.alibaba.lindorm.contest.impl.compress.DeflaterUtils;
 import com.alibaba.lindorm.contest.impl.file.FileManager;
 import com.alibaba.lindorm.contest.impl.index.Index;
 import com.alibaba.lindorm.contest.impl.index.IndexLoader;
 import com.alibaba.lindorm.contest.impl.schema.SchemaMeta;
-import com.alibaba.lindorm.contest.structs.*;
+import com.alibaba.lindorm.contest.impl.store.ByteBuffersDataInput;
+import com.alibaba.lindorm.contest.structs.ColumnValue;
+import com.alibaba.lindorm.contest.structs.LatestQueryRequest;
+import com.alibaba.lindorm.contest.structs.Row;
+import com.alibaba.lindorm.contest.structs.TimeRangeQueryRequest;
+import com.alibaba.lindorm.contest.structs.Vin;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class DataQueryHandler {
     private final FileManager fileManager;
@@ -83,18 +94,18 @@ public class DataQueryHandler {
             }
             fileChannel.read(sizeByteBuffer, latestIndex.getOffset());
             sizeByteBuffer.flip();
+            ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
 
             byte[] vinBytes = new byte[Vin.VIN_LENGTH];
-            for (int i = 0; i < Vin.VIN_LENGTH; i++) {
-                vinBytes[i] = sizeByteBuffer.get();
-            }
+            dataInput.readBytes(vinBytes, 0, Vin.VIN_LENGTH);
             String vinStr = new String(vinBytes);
-            long t = sizeByteBuffer.getLong();
+
+            long t = dataInput.readVLong();
             Map<String, ColumnValue> columns = new HashMap<>();
 
             ArrayList<String> integerColumnsNameList = schemaMeta.getIntegerColumnsName();
             for (String cName : integerColumnsNameList) {
-                int intVal = sizeByteBuffer.getInt();
+                int intVal = dataInput.readVInt();
                 ColumnValue cVal = new ColumnValue.IntegerColumn(intVal);
                 if (requestedColumns.contains(cName)) {
                     columns.put(cName, cVal);
@@ -102,7 +113,7 @@ public class DataQueryHandler {
             }
             ArrayList<String> doubleColumnsNameList = schemaMeta.getDoubleColumnsName();
             for (String cName : doubleColumnsNameList) {
-                double doubleVal = sizeByteBuffer.getDouble();
+                double doubleVal = dataInput.readZDouble();
                 ColumnValue cVal = new ColumnValue.DoubleFloatColumn(doubleVal);
                 if (requestedColumns.contains(cName)) {
                     columns.put(cName, cVal);
@@ -111,14 +122,11 @@ public class DataQueryHandler {
             ArrayList<String> stringColumnsNameList = schemaMeta.getStringColumnsName();
             List<Integer> stringLengthList = new ArrayList<>();
             for (String cName : stringColumnsNameList) {
-                int length = sizeByteBuffer.getInt();
+                int length = dataInput.readVInt();
                 stringLengthList.add(length);
             }
-            int stringValueLength = sizeByteBuffer.getInt();
-            byte[] stringBytes = new byte[stringValueLength];
-            sizeByteBuffer.get(stringBytes);
-            byte[] unzipBytes = DeflaterUtils.unzipString(stringBytes);
-            ByteBuffer buffer = ByteBuffer.wrap(unzipBytes);
+            String s = dataInput.readString();
+            ByteBuffer buffer = ByteBuffer.wrap(s.getBytes());
             for (int i = 0; i < stringLengthList.size(); i++) {
                 int length = stringLengthList.get(i);
                 byte[] bytes = new byte[length];
@@ -158,18 +166,19 @@ public class DataQueryHandler {
             return new ArrayList<>();
         }
         MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
-        while (sizeByteBuffer.hasRemaining()) {
+        ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
+        while (dataInput.position() < dataInput.size()) {
             byte[] vinBytes = new byte[Vin.VIN_LENGTH];
             for (int i = 0; i < Vin.VIN_LENGTH; i++) {
-                vinBytes[i] = sizeByteBuffer.get();
+                vinBytes[i] = dataInput.readByte();
             }
             String vinStr = new String(vinBytes);
-            long t = sizeByteBuffer.getLong();
+            long t = dataInput.readVLong();
             Map<String, ColumnValue> columns = new HashMap<>();
 
             ArrayList<String> integerColumnsNameList = schemaMeta.getIntegerColumnsName();
             for (String cName : integerColumnsNameList) {
-                int intVal = sizeByteBuffer.getInt();
+                int intVal = dataInput.readVInt();
                 ColumnValue cVal = new ColumnValue.IntegerColumn(intVal);
                 if (requestedColumns.contains(cName)) {
                     columns.put(cName, cVal);
@@ -177,7 +186,7 @@ public class DataQueryHandler {
             }
             ArrayList<String> doubleColumnsNameList = schemaMeta.getDoubleColumnsName();
             for (String cName : doubleColumnsNameList) {
-                double doubleVal = sizeByteBuffer.getDouble();
+                double doubleVal = dataInput.readZDouble();
                 ColumnValue cVal = new ColumnValue.DoubleFloatColumn(doubleVal);
                 if (requestedColumns.contains(cName)) {
                     columns.put(cName, cVal);
@@ -186,14 +195,11 @@ public class DataQueryHandler {
             ArrayList<String> stringColumnsNameList = schemaMeta.getStringColumnsName();
             List<Integer> stringLengthList = new ArrayList<>();
             for (String cName : stringColumnsNameList) {
-                int length = sizeByteBuffer.getInt();
+                int length = dataInput.readVInt();
                 stringLengthList.add(length);
             }
-            int stringValueLength = sizeByteBuffer.getInt();
-            byte[] stringBytes = new byte[stringValueLength];
-            sizeByteBuffer.get(stringBytes);
-            byte[] unzipBytes = DeflaterUtils.unzipString(stringBytes);
-            ByteBuffer buffer = ByteBuffer.wrap(unzipBytes);
+            String s = dataInput.readString();
+            ByteBuffer buffer = ByteBuffer.wrap(s.getBytes());
             for (int i = 0; i < stringLengthList.size(); i++) {
                 int length = stringLengthList.get(i);
                 byte[] bytes = new byte[length];
