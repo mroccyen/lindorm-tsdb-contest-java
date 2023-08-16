@@ -96,10 +96,6 @@ public class DataQueryHandler {
             sizeByteBuffer.flip();
             ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
 
-            byte[] vinBytes = new byte[Vin.VIN_LENGTH];
-            dataInput.readBytes(vinBytes, 0, Vin.VIN_LENGTH);
-            String vinStr = new String(vinBytes);
-
             long t = dataInput.readVLong();
             Map<String, ColumnValue> columns = new HashMap<>();
 
@@ -139,13 +135,10 @@ public class DataQueryHandler {
                     columns.put(cName, cVal);
                 }
             }
-            if (vinNameSet.contains(vinStr)) {
-                Vin v = new Vin(vinBytes);
-                if (latestTimestamp.get(v) < t) {
-                    //构建Row
-                    latestRowMap.put(v, new Row(v, t, columns));
-                    latestTimestamp.put(v, t);
-                }
+            if (latestTimestamp.get(vin) < t) {
+                //构建Row
+                latestRowMap.put(vin, new Row(vin, t, columns));
+                latestTimestamp.put(vin, t);
             }
             sizeByteBuffer.clear();
         }
@@ -168,11 +161,6 @@ public class DataQueryHandler {
         MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
         ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
         while (dataInput.position() < dataInput.size()) {
-            byte[] vinBytes = new byte[Vin.VIN_LENGTH];
-            for (int i = 0; i < Vin.VIN_LENGTH; i++) {
-                vinBytes[i] = dataInput.readByte();
-            }
-            String vinStr = new String(vinBytes);
             long t = dataInput.readVLong();
             Map<String, ColumnValue> columns = new HashMap<>();
 
@@ -213,19 +201,15 @@ public class DataQueryHandler {
                 }
             }
 
-            if (vinNameSet.contains(vinStr)) {
-                //范围查询
-                if (t >= timeLowerBound && t < timeUpperBound) {
-                    //构建Row
-                    Vin v = new Vin(vinBytes);
-                    ArrayList<Row> rows = timeRangeRowMap.get(v);
-                    if (rows == null) {
-                        rows = new ArrayList<>();
-                    }
-                    Row row = new Row(v, t, columns);
-                    rows.add(row);
-                    timeRangeRowMap.put(v, rows);
+            //范围查询
+            if (t >= timeLowerBound && t < timeUpperBound) {
+                ArrayList<Row> rows = timeRangeRowMap.get(vin);
+                if (rows == null) {
+                    rows = new ArrayList<>();
                 }
+                Row row = new Row(vin, t, columns);
+                rows.add(row);
+                timeRangeRowMap.put(vin, rows);
             }
         }
         if (timeLowerBound != -1 && timeUpperBound != -1) {

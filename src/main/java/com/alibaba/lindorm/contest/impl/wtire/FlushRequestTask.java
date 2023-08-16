@@ -69,8 +69,6 @@ public class FlushRequestTask extends Thread {
 
                 FileChannel dataWriteFileChanel = fileManager.getWriteFilChannel(tableName, vin);
                 SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
-                //vin has 17 byte
-                byteBuffersDataOutput.writeBytes(vin.getVin());
                 byteBuffersDataOutput.writeVLong(row.getTimestamp());
 
                 ArrayList<String> integerColumnsNameList = schemaMeta.getIntegerColumnsName();
