@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -75,9 +76,13 @@ public class DataQueryHandler {
 
         Map<Vin, Long> latestTimestamp = new HashMap<>();
         Map<Vin, Row> latestRowMap = new HashMap<>();
+        Set<String> vinNameSet = new HashSet<>();
         for (Vin vin : vinList) {
             latestTimestamp.put(vin, 0L);
+            String vinReqStr = new String(vin.getVin());
+            vinNameSet.add(vinReqStr);
         }
+        ByteBuffer sizeByteBuffer = ByteBuffer.allocate(1024 * 10);
         for (Vin vin : vinList) {
             FileChannel fileChannel = fileManager.getReadFileChannel(tableName, vin);
             if (fileChannel == null || fileChannel.size() == 0) {
@@ -87,9 +92,9 @@ public class DataQueryHandler {
             if (latestIndex == null) {
                 return null;
             }
-            MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
+            fileChannel.read(sizeByteBuffer, latestIndex.getOffset());
+            sizeByteBuffer.flip();
             ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
-            dataInput.seek(latestIndex.getOffset());
 
             long t = dataInput.readVLong();
             long size = dataInput.readVLong();
@@ -136,6 +141,7 @@ public class DataQueryHandler {
                 latestRowMap.put(vin, new Row(vin, t, columns));
                 latestTimestamp.put(vin, t);
             }
+            sizeByteBuffer.clear();
         }
         return new ArrayList<>(latestRowMap.values());
     }
