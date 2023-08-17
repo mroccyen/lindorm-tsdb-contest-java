@@ -32,7 +32,7 @@ public class DataQueryHandler {
         try {
             result = executeLatestQuery(tableName, vinList, requestedColumns);
         } catch (Exception ex) {
-            System.out.println(">>> executeLatestQuery happen exception: " + ex.getMessage());
+            System.out.println(">>> executeLatestQuery happen exception: " + ex.getClass().getName());
             for (StackTraceElement stackTraceElement : ex.getStackTrace()) {
                 System.out.println(">>> executeLatestQuery happen exception: " + stackTraceElement.toString());
             }
@@ -52,7 +52,7 @@ public class DataQueryHandler {
         try {
             result = executeTimeRangeQuery(tableName, vin, requestedColumns, trReadReq.getTimeLowerBound(), trReadReq.getTimeUpperBound());
         } catch (Exception ex) {
-            System.out.println(">>> executeTimeRangeQuery happen exception: " + ex.getMessage());
+            System.out.println(">>> executeTimeRangeQuery happen exception: " + ex.getClass().getName());
             for (StackTraceElement stackTraceElement : ex.getStackTrace()) {
                 System.out.println(">>> executeTimeRangeQuery happen exception: " + stackTraceElement.toString());
             }
