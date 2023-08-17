@@ -116,6 +116,7 @@ public class FlushRequestTask extends Thread {
                 dataWriteFileChanel.write(tempOutput.toBufferList().get(0));
 
                 //add index
+                index.setBuffer(ByteBuffer.wrap(zipBytes));
                 IndexLoader.offerLatestIndex(tableName, vin, index);
 
                 //释放写文件锁

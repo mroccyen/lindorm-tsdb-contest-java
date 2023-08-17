@@ -49,7 +49,7 @@ public class TSDBEngineImpl extends TSDBEngine {
         schemaHandler = new SchemaHandler(fileManager, getDataPath());
         schemaHandler.loadTableInfo();
         //加载索引信息
-        indexLoaderTask = new IndexLoaderTask();
+        indexLoaderTask = new IndexLoaderTask(fileManager);
         indexLoaderTask.setName("IndexLoaderTask");
         indexLoaderTask.start();
         IndexLoader.loadLatestIndex(fileManager, indexLoaderTask);

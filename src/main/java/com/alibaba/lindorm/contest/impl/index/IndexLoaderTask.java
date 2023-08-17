@@ -1,7 +1,12 @@
 package com.alibaba.lindorm.contest.impl.index;
 
+import com.alibaba.lindorm.contest.impl.file.FileManager;
+import com.alibaba.lindorm.contest.impl.store.ByteBuffersDataInput;
 import com.alibaba.lindorm.contest.structs.Vin;
 
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.util.Collections;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -12,6 +17,12 @@ public class IndexLoaderTask extends Thread {
     private boolean stop = false;
 
     private IndexLoadCompleteWrapper indexLoadCompleteWrapper;
+
+    private final FileManager fileManager;
+
+    public IndexLoaderTask(FileManager fileManager) {
+        this.fileManager = fileManager;
+    }
 
     public void shutdown() {
         stop = true;
@@ -27,6 +38,7 @@ public class IndexLoaderTask extends Thread {
 
     @Override
     public void run() {
+        ByteBuffer sizeByteBuffer = ByteBuffer.allocate(1024 * 10);
         while (!stop) {
             try {
                 IndexLoadCompleteNotice notice = writeRequestQueue.poll(5, TimeUnit.MILLISECONDS);
@@ -40,7 +52,23 @@ public class IndexLoaderTask extends Thread {
                         index.setOffset(notice.getOffset());
                         index.setRowKey(notice.getVin());
                         index.setLatestTimestamp(notice.getTimestamp());
+
+                        FileChannel fileChannel = fileManager.getReadFileChannel(notice.getTableName(), new Vin(notice.getVin()));
+                        if (fileChannel == null || fileChannel.size() == 0) {
+                            continue;
+                        }
+                        fileChannel.read(sizeByteBuffer, notice.getOffset());
+                        sizeByteBuffer.flip();
+                        ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
+
+                        dataInput.readVLong();
+                        long size = dataInput.readVLong();
+                        ByteBuffer tempBuffer = ByteBuffer.allocate((int) size);
+                        dataInput.readBytes(tempBuffer, (int) size);
+                        index.setBuffer(ByteBuffer.wrap(tempBuffer.array()));
+
                         IndexLoader.offerLatestIndex(notice.getTableName(), new Vin(notice.getVin()), index);
+                        sizeByteBuffer.clear();
                     }
                 }
             } catch (Exception e) {
