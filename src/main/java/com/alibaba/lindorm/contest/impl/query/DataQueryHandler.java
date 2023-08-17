@@ -95,7 +95,7 @@ public class DataQueryHandler {
         dataInput.readLong();
         while (dataInput.position() < dataInput.size()) {
             long t = dataInput.readVLong();
-            long size = dataInput.readVLong();
+            long size = dataInput.readVInt();
             long position = dataInput.position() + size;
             if (t >= timeLowerBound && t < timeUpperBound) {
                 ByteBuffer tempBuffer = ByteBuffer.allocate((int) size);
