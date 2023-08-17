@@ -69,20 +69,20 @@ public class FlushRequestTask extends Thread {
 
                 FileChannel dataWriteFileChanel = fileManager.getWriteFilChannel(tableName, vin);
                 SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
-                byteBuffersDataOutput.writeVLong(row.getTimestamp());
 
+                ByteBuffersDataOutput tempDataOutput = new ByteBuffersDataOutput();
                 ArrayList<String> integerColumnsNameList = schemaMeta.getIntegerColumnsName();
                 for (String cName : integerColumnsNameList) {
                     ColumnValue cVal = row.getColumns().get(cName);
                     ColumnValue.IntegerColumn integerColumn = (ColumnValue.IntegerColumn) cVal;
-                    byteBuffersDataOutput.writeVInt(integerColumn.getIntegerValue());
+                    tempDataOutput.writeVInt(integerColumn.getIntegerValue());
                 }
 
                 ArrayList<String> doubleColumnsNameList = schemaMeta.getDoubleColumnsName();
                 for (String cName : doubleColumnsNameList) {
                     ColumnValue cVal = row.getColumns().get(cName);
                     ColumnValue.DoubleFloatColumn doubleFloatColumn = (ColumnValue.DoubleFloatColumn) cVal;
-                    byteBuffersDataOutput.writeZDouble(doubleFloatColumn.getDoubleFloatValue());
+                    tempDataOutput.writeZDouble(doubleFloatColumn.getDoubleFloatValue());
                 }
 
                 ArrayList<String> stringColumnsNameList = schemaMeta.getStringColumnsName();
@@ -91,10 +91,15 @@ public class FlushRequestTask extends Thread {
                     ColumnValue cVal = row.getColumns().get(cName);
                     ColumnValue.StringColumn stringColumn = (ColumnValue.StringColumn) cVal;
                     ByteBuffer stringValue = stringColumn.getStringValue();
-                    byteBuffersDataOutput.writeVInt(stringValue.remaining());
+                    tempDataOutput.writeVInt(stringValue.remaining());
                     builder.append(new String(stringValue.array()));
                 }
-                byteBuffersDataOutput.writeString(builder.toString());
+                tempDataOutput.writeString(builder.toString());
+                long sizeAfter = tempDataOutput.size();
+
+                byteBuffersDataOutput.writeVLong(row.getTimestamp());
+                byteBuffersDataOutput.writeVLong(sizeAfter);
+                tempDataOutput.copyTo(byteBuffersDataOutput);
 
                 //获得写文件锁
                 Lock writeLock = fileManager.getWriteLock(tableName, vin);

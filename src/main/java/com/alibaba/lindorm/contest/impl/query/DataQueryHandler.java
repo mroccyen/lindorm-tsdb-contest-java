@@ -97,6 +97,7 @@ public class DataQueryHandler {
             ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
 
             long t = dataInput.readVLong();
+            long size = dataInput.readVLong();
             Map<String, ColumnValue> columns = new HashMap<>();
 
             ArrayList<String> integerColumnsNameList = schemaMeta.getIntegerColumnsName();
@@ -148,11 +149,7 @@ public class DataQueryHandler {
     private ArrayList<Row> executeTimeRangeQuery(String tableName, Vin vin, Set<String> requestedColumns, long timeLowerBound, long timeUpperBound) throws IOException {
         SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
         ArrayList<Row> rowList = new ArrayList<>();
-
         Map<Vin, ArrayList<Row>> timeRangeRowMap = new HashMap<>();
-        Set<String> vinNameSet = new HashSet<>();
-        String vinReqStr = new String(vin.getVin());
-        vinNameSet.add(vinReqStr);
 
         FileChannel fileChannel = fileManager.getReadFileChannel(tableName, vin);
         if (fileChannel == null || fileChannel.size() == 0) {
@@ -162,47 +159,48 @@ public class DataQueryHandler {
         ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
         while (dataInput.position() < dataInput.size()) {
             long t = dataInput.readVLong();
-            Map<String, ColumnValue> columns = new HashMap<>();
-
-            ArrayList<String> integerColumnsNameList = schemaMeta.getIntegerColumnsName();
-            for (String cName : integerColumnsNameList) {
-                int intVal = dataInput.readVInt();
-                ColumnValue cVal = new ColumnValue.IntegerColumn(intVal);
-                if (requestedColumns.contains(cName)) {
-                    columns.put(cName, cVal);
-                }
-            }
-            ArrayList<String> doubleColumnsNameList = schemaMeta.getDoubleColumnsName();
-            for (String cName : doubleColumnsNameList) {
-                double doubleVal = dataInput.readZDouble();
-                ColumnValue cVal = new ColumnValue.DoubleFloatColumn(doubleVal);
-                if (requestedColumns.contains(cName)) {
-                    columns.put(cName, cVal);
-                }
-            }
-            ArrayList<String> stringColumnsNameList = schemaMeta.getStringColumnsName();
-            List<Integer> stringLengthList = new ArrayList<>();
-            for (String cName : stringColumnsNameList) {
-                int length = dataInput.readVInt();
-                stringLengthList.add(length);
-            }
-            String s = dataInput.readString();
-            ByteBuffer buffer = ByteBuffer.wrap(s.getBytes());
-            for (int i = 0; i < stringLengthList.size(); i++) {
-                int length = stringLengthList.get(i);
-                byte[] bytes = new byte[length];
-                for (int j = 0; j < length; j++) {
-                    bytes[j] = buffer.get();
-                }
-                String cName = stringColumnsNameList.get(i);
-                ColumnValue cVal = new ColumnValue.StringColumn(ByteBuffer.wrap(bytes));
-                if (requestedColumns.contains(cName)) {
-                    columns.put(cName, cVal);
-                }
-            }
-
-            //范围查询
+            long size = dataInput.readVLong();
+            long position = dataInput.position() + size;
             if (t >= timeLowerBound && t < timeUpperBound) {
+                Map<String, ColumnValue> columns = new HashMap<>();
+
+                ArrayList<String> integerColumnsNameList = schemaMeta.getIntegerColumnsName();
+                for (String cName : integerColumnsNameList) {
+                    int intVal = dataInput.readVInt();
+                    ColumnValue cVal = new ColumnValue.IntegerColumn(intVal);
+                    if (requestedColumns.contains(cName)) {
+                        columns.put(cName, cVal);
+                    }
+                }
+                ArrayList<String> doubleColumnsNameList = schemaMeta.getDoubleColumnsName();
+                for (String cName : doubleColumnsNameList) {
+                    double doubleVal = dataInput.readZDouble();
+                    ColumnValue cVal = new ColumnValue.DoubleFloatColumn(doubleVal);
+                    if (requestedColumns.contains(cName)) {
+                        columns.put(cName, cVal);
+                    }
+                }
+                ArrayList<String> stringColumnsNameList = schemaMeta.getStringColumnsName();
+                List<Integer> stringLengthList = new ArrayList<>();
+                for (String cName : stringColumnsNameList) {
+                    int length = dataInput.readVInt();
+                    stringLengthList.add(length);
+                }
+                String s = dataInput.readString();
+                ByteBuffer buffer = ByteBuffer.wrap(s.getBytes());
+                for (int i = 0; i < stringLengthList.size(); i++) {
+                    int length = stringLengthList.get(i);
+                    byte[] bytes = new byte[length];
+                    for (int j = 0; j < length; j++) {
+                        bytes[j] = buffer.get();
+                    }
+                    String cName = stringColumnsNameList.get(i);
+                    ColumnValue cVal = new ColumnValue.StringColumn(ByteBuffer.wrap(bytes));
+                    if (requestedColumns.contains(cName)) {
+                        columns.put(cName, cVal);
+                    }
+                }
+
                 ArrayList<Row> rows = timeRangeRowMap.get(vin);
                 if (rows == null) {
                     rows = new ArrayList<>();
@@ -210,6 +208,8 @@ public class DataQueryHandler {
                 Row row = new Row(vin, t, columns);
                 rows.add(row);
                 timeRangeRowMap.put(vin, rows);
+            } else {
+                dataInput.seek(position);
             }
         }
         if (timeLowerBound != -1 && timeUpperBound != -1) {
