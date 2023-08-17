@@ -1,14 +1,13 @@
 package com.alibaba.lindorm.contest.impl.file;
 
 import com.alibaba.lindorm.contest.impl.schema.SchemaMeta;
-import com.alibaba.lindorm.contest.impl.common.CommonSetting;
 import com.alibaba.lindorm.contest.structs.Vin;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.*;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -22,8 +21,6 @@ public class FileManager {
     private Map<String, Map<Vin, FileChannel>> readFileMap = new ConcurrentHashMap<>();
     private final File dataPath;
     private final Map<String, SchemaMeta> tableSchemaMetaMap = new ConcurrentHashMap<>();
-    private Map<String, FileChannel> writeLatestIndexFileMap = new ConcurrentHashMap<>();
-    private Map<String, FileChannel> readLatestIndexFileMap = new ConcurrentHashMap<>();
 
     public FileManager(File dataPath) {
         this.dataPath = dataPath;
@@ -41,11 +38,6 @@ public class FileManager {
                 if (dataFiles != null) {
                     for (File dataFile : dataFiles) {
                         String name = dataFile.getName();
-                        if (name.equals(CommonSetting.LATEST_INDEX_FILE_NAME)) {
-                            FileChannel latestIndexFileChannel = FileChannel.open(dataFile.toPath(), READ);
-                            readLatestIndexFileMap.put(tableName, latestIndexFileChannel);
-                            continue;
-                        }
                         Vin vin = new Vin(name.getBytes());
 
                         FileChannel readFileChannel = FileChannel.open(dataFile.toPath(), READ);
@@ -102,6 +94,7 @@ public class FileManager {
         //插入最新值的偏移量
         ByteBuffer buffer = ByteBuffer.allocate(8);
         buffer.putLong(8);
+        buffer.flip();
         writeFileChannel.write(buffer);
         Map<Vin, FileChannel> wtireMap = writeFileMap.get(tableName);
         if (wtireMap != null) {
@@ -168,17 +161,9 @@ public class FileManager {
                     file.getValue().close();
                 }
             }
-            for (Map.Entry<String, FileChannel> file : writeLatestIndexFileMap.entrySet()) {
-                file.getValue().close();
-            }
-            for (Map.Entry<String, FileChannel> file : readLatestIndexFileMap.entrySet()) {
-                file.getValue().close();
-            }
             writeFileMap = null;
             writeLockMap = null;
             readFileMap = null;
-            writeLatestIndexFileMap = null;
-            readLatestIndexFileMap = null;
         } catch (Exception e) {
             System.out.println(">>> " + Thread.currentThread().getName() + " FileManager happen exception: " + e.getMessage());
             for (StackTraceElement stackTraceElement : e.getStackTrace()) {
@@ -206,32 +191,5 @@ public class FileManager {
 
     public Map<String, SchemaMeta> getTableSchemaMetaMap() {
         return tableSchemaMetaMap;
-    }
-
-    public FileChannel getWriteLatestIndexFile(String tableName) throws IOException {
-        if (writeLatestIndexFileMap.containsKey(tableName)) {
-            return writeLatestIndexFileMap.get(tableName);
-        }
-        String absolutePath = dataPath.getAbsolutePath();
-        String folder = absolutePath + File.separator + tableName;
-        File tablePath = new File(folder);
-        if (!tablePath.exists()) {
-            return null;
-        }
-        String s = folder + File.separator + CommonSetting.LATEST_INDEX_FILE_NAME;
-        File f = new File(s);
-        if (!f.exists()) {
-            f.createNewFile();
-        } else {
-            f.delete();
-            f.createNewFile();
-        }
-        FileChannel channel = FileChannel.open(f.toPath(), APPEND);
-        writeLatestIndexFileMap.put(tableName, channel);
-        return channel;
-    }
-
-    public Map<String, FileChannel> getReadLatestIndexFileMap() {
-        return readLatestIndexFileMap;
     }
 }

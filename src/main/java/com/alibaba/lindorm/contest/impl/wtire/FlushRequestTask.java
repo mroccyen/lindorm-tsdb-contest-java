@@ -123,6 +123,7 @@ public class FlushRequestTask extends Thread {
                 boolean b = IndexLoader.offerLatestIndex(tableName, vin, index);
                 if (b) {
                     latestPositionBuffer.putLong(position);
+                    latestPositionBuffer.flip();
                     dataWriteFileChanel.write(latestPositionBuffer, 0);
                     latestPositionBuffer.clear();
                 }

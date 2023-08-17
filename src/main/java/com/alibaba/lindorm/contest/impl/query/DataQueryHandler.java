@@ -91,6 +91,8 @@ public class DataQueryHandler {
         }
         MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
         ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
+        //最新值的偏移量
+        dataInput.readLong();
         while (dataInput.position() < dataInput.size()) {
             long t = dataInput.readVLong();
             long size = dataInput.readVLong();
