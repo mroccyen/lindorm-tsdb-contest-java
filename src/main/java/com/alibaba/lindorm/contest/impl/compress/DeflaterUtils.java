@@ -27,7 +27,7 @@ public class DeflaterUtils {
          *     public static final int SYNC_FLUSH = 2;                  用于清除所有未决输出的压缩刷新模式; 可能会降低某些压缩算法的压缩率。
          */
         //使用指定的压缩级别创建一个新的压缩器。
-        Deflater deflater = new Deflater(Deflater.BEST_COMPRESSION);
+        Deflater deflater = new Deflater(Deflater.HUFFMAN_ONLY);
         //设置压缩输入数据。
         deflater.setInput(unzipBytes);
         //当被调用时，表示压缩应该以输入缓冲区的当前内容结束。

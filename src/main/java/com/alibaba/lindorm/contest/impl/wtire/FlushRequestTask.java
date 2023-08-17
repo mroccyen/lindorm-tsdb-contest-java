@@ -1,5 +1,6 @@
 package com.alibaba.lindorm.contest.impl.wtire;
 
+import com.alibaba.lindorm.contest.impl.compress.DeflaterUtils;
 import com.alibaba.lindorm.contest.impl.file.FileManager;
 import com.alibaba.lindorm.contest.impl.index.Index;
 import com.alibaba.lindorm.contest.impl.index.IndexLoader;
@@ -70,19 +71,18 @@ public class FlushRequestTask extends Thread {
                 FileChannel dataWriteFileChanel = fileManager.getWriteFilChannel(tableName, vin);
                 SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
 
-                ByteBuffersDataOutput tempDataOutput = new ByteBuffersDataOutput();
                 ArrayList<String> integerColumnsNameList = schemaMeta.getIntegerColumnsName();
                 for (String cName : integerColumnsNameList) {
                     ColumnValue cVal = row.getColumns().get(cName);
                     ColumnValue.IntegerColumn integerColumn = (ColumnValue.IntegerColumn) cVal;
-                    tempDataOutput.writeVInt(integerColumn.getIntegerValue());
+                    byteBuffersDataOutput.writeVInt(integerColumn.getIntegerValue());
                 }
 
                 ArrayList<String> doubleColumnsNameList = schemaMeta.getDoubleColumnsName();
                 for (String cName : doubleColumnsNameList) {
                     ColumnValue cVal = row.getColumns().get(cName);
                     ColumnValue.DoubleFloatColumn doubleFloatColumn = (ColumnValue.DoubleFloatColumn) cVal;
-                    tempDataOutput.writeZDouble(doubleFloatColumn.getDoubleFloatValue());
+                    byteBuffersDataOutput.writeZDouble(doubleFloatColumn.getDoubleFloatValue());
                 }
 
                 ArrayList<String> stringColumnsNameList = schemaMeta.getStringColumnsName();
@@ -91,15 +91,10 @@ public class FlushRequestTask extends Thread {
                     ColumnValue cVal = row.getColumns().get(cName);
                     ColumnValue.StringColumn stringColumn = (ColumnValue.StringColumn) cVal;
                     ByteBuffer stringValue = stringColumn.getStringValue();
-                    tempDataOutput.writeVInt(stringValue.remaining());
+                    byteBuffersDataOutput.writeVInt(stringValue.remaining());
                     builder.append(new String(stringValue.array()));
                 }
-                tempDataOutput.writeString(builder.toString());
-                long sizeAfter = tempDataOutput.size();
-
-                byteBuffersDataOutput.writeVLong(row.getTimestamp());
-                byteBuffersDataOutput.writeVLong(sizeAfter);
-                tempDataOutput.copyTo(byteBuffersDataOutput);
+                byteBuffersDataOutput.writeString(builder.toString());
 
                 //获得写文件锁
                 Lock writeLock = fileManager.getWriteLock(tableName, vin);
@@ -111,7 +106,14 @@ public class FlushRequestTask extends Thread {
                 index.setRowKey(vin.getVin());
                 index.setLatestTimestamp(row.getTimestamp());
 
-                dataWriteFileChanel.write(byteBuffersDataOutput.toBufferList().get(0));
+                //压缩
+                ByteBuffer buffer = byteBuffersDataOutput.toWriteableBufferList().get(0);
+                byte[] zipBytes = DeflaterUtils.zipString(buffer.array());
+                ByteBuffersDataOutput tempOutput = new ByteBuffersDataOutput();
+                tempOutput.writeVLong(row.getTimestamp());
+                tempOutput.writeVInt(zipBytes.length);
+                tempOutput.writeBytes(zipBytes);
+                dataWriteFileChanel.write(tempOutput.toBufferList().get(0));
 
                 //add index
                 IndexLoader.offerLatestIndex(tableName, vin, index);

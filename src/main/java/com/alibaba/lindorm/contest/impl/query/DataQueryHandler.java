@@ -1,5 +1,6 @@
 package com.alibaba.lindorm.contest.impl.query;
 
+import com.alibaba.lindorm.contest.impl.compress.DeflaterUtils;
 import com.alibaba.lindorm.contest.impl.file.FileManager;
 import com.alibaba.lindorm.contest.impl.index.Index;
 import com.alibaba.lindorm.contest.impl.index.IndexLoader;
@@ -98,8 +99,12 @@ public class DataQueryHandler {
 
             long t = dataInput.readVLong();
             long size = dataInput.readVLong();
-            Map<String, ColumnValue> columns = new HashMap<>();
+            ByteBuffer tempBuffer = ByteBuffer.allocate((int) size);
+            dataInput.readBytes(tempBuffer, (int) size);
+            byte[] unzipBytes = DeflaterUtils.unzipString(tempBuffer.array());
+            dataInput = new ByteBuffersDataInput(Collections.singletonList(ByteBuffer.wrap(unzipBytes)));
 
+            Map<String, ColumnValue> columns = new HashMap<>();
             ArrayList<String> integerColumnsNameList = schemaMeta.getIntegerColumnsName();
             for (String cName : integerColumnsNameList) {
                 int intVal = dataInput.readVInt();
@@ -162,11 +167,15 @@ public class DataQueryHandler {
             long size = dataInput.readVLong();
             long position = dataInput.position() + size;
             if (t >= timeLowerBound && t < timeUpperBound) {
-                Map<String, ColumnValue> columns = new HashMap<>();
+                ByteBuffer tempBuffer = ByteBuffer.allocate((int) size);
+                dataInput.readBytes(tempBuffer, (int) size);
+                byte[] unzipBytes = DeflaterUtils.unzipString(tempBuffer.array());
+                ByteBuffersDataInput tempDataInput = new ByteBuffersDataInput(Collections.singletonList(ByteBuffer.wrap(unzipBytes)));
 
+                Map<String, ColumnValue> columns = new HashMap<>();
                 ArrayList<String> integerColumnsNameList = schemaMeta.getIntegerColumnsName();
                 for (String cName : integerColumnsNameList) {
-                    int intVal = dataInput.readVInt();
+                    int intVal = tempDataInput.readVInt();
                     ColumnValue cVal = new ColumnValue.IntegerColumn(intVal);
                     if (requestedColumns.contains(cName)) {
                         columns.put(cName, cVal);
@@ -174,7 +183,7 @@ public class DataQueryHandler {
                 }
                 ArrayList<String> doubleColumnsNameList = schemaMeta.getDoubleColumnsName();
                 for (String cName : doubleColumnsNameList) {
-                    double doubleVal = dataInput.readZDouble();
+                    double doubleVal = tempDataInput.readZDouble();
                     ColumnValue cVal = new ColumnValue.DoubleFloatColumn(doubleVal);
                     if (requestedColumns.contains(cName)) {
                         columns.put(cName, cVal);
@@ -183,10 +192,10 @@ public class DataQueryHandler {
                 ArrayList<String> stringColumnsNameList = schemaMeta.getStringColumnsName();
                 List<Integer> stringLengthList = new ArrayList<>();
                 for (String cName : stringColumnsNameList) {
-                    int length = dataInput.readVInt();
+                    int length = tempDataInput.readVInt();
                     stringLengthList.add(length);
                 }
-                String s = dataInput.readString();
+                String s = tempDataInput.readString();
                 ByteBuffer buffer = ByteBuffer.wrap(s.getBytes());
                 for (int i = 0; i < stringLengthList.size(); i++) {
                     int length = stringLengthList.get(i);
