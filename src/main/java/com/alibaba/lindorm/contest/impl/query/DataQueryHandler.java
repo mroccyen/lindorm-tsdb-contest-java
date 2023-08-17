@@ -95,11 +95,11 @@ public class DataQueryHandler {
         dataInput.readLong();
         while (dataInput.position() < dataInput.size()) {
             long t = dataInput.readVLong();
-            long size = dataInput.readVInt();
+            int size = dataInput.readVInt();
             long position = dataInput.position() + size;
             if (t >= timeLowerBound && t < timeUpperBound) {
-                ByteBuffer tempBuffer = ByteBuffer.allocate((int) size);
-                dataInput.readBytes(tempBuffer, (int) size);
+                ByteBuffer tempBuffer = ByteBuffer.allocate(size);
+                dataInput.readBytes(tempBuffer, size);
                 byte[] unzipBytes = DeflaterUtils.unzipString(tempBuffer.array());
                 ByteBuffersDataInput tempDataInput = new ByteBuffersDataInput(Collections.singletonList(ByteBuffer.wrap(unzipBytes)));
 
