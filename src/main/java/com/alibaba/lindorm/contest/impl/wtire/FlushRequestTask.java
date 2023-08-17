@@ -26,11 +26,14 @@ public class FlushRequestTask extends Thread {
     private boolean stop = false;
     private final HandleRequestTask handleRequestTask;
     private final ByteBuffersDataOutput byteBuffersDataOutput;
+    private final ByteBuffer latestPositionBuffer;
 
     public FlushRequestTask(FileManager fileManager, HandleRequestTask handleRequestTask) {
         this.handleRequestTask = handleRequestTask;
         this.fileManager = fileManager;
         byteBuffersDataOutput = new ByteBuffersDataOutput();
+        latestPositionBuffer = ByteBuffer.allocate(8);
+        latestPositionBuffer.clear();
     }
 
     public void shutdown() {
@@ -117,7 +120,12 @@ public class FlushRequestTask extends Thread {
 
                 //add index
                 index.setBuffer(ByteBuffer.wrap(zipBytes));
-                IndexLoader.offerLatestIndex(tableName, vin, index);
+                boolean b = IndexLoader.offerLatestIndex(tableName, vin, index);
+                if (b) {
+                    latestPositionBuffer.putLong(position);
+                    dataWriteFileChanel.write(latestPositionBuffer, 0);
+                    latestPositionBuffer.clear();
+                }
 
                 //释放写文件锁
                 writeLock.unlock();
