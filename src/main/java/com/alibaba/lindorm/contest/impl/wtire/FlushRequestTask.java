@@ -110,13 +110,18 @@ public class FlushRequestTask extends Thread {
                 index.setLatestTimestamp(row.getTimestamp());
 
                 //压缩
-                ByteBuffer buffer = byteBuffersDataOutput.toWriteableBufferList().get(0);
-                byte[] zipBytes = DeflaterUtils.zipString(buffer.array());
+                ByteBuffer totalByte = ByteBuffer.allocate((int) byteBuffersDataOutput.size());
+                for (int i = 0; i < byteBuffersDataOutput.toWriteableBufferList().size(); i++) {
+                    totalByte.put(byteBuffersDataOutput.toWriteableBufferList().get(i));
+                }
+                byte[] zipBytes = DeflaterUtils.zipString(totalByte.array());
                 ByteBuffersDataOutput tempOutput = new ByteBuffersDataOutput();
                 tempOutput.writeVLong(row.getTimestamp());
                 tempOutput.writeVInt(zipBytes.length);
                 tempOutput.writeBytes(zipBytes);
-                dataWriteFileChanel.write(tempOutput.toBufferList().get(0));
+                for (ByteBuffer byteBuffer : tempOutput.toBufferList()) {
+                    dataWriteFileChanel.write(byteBuffer);
+                }
 
                 //add index
                 index.setBuffer(ByteBuffer.wrap(zipBytes));
