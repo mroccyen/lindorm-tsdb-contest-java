@@ -113,6 +113,13 @@ public class DataQueryHandler {
                 rows.add(row);
                 timeRangeRowMap.put(vin, rows);
             } else {
+                if (position > dataInput.size()) {
+                    System.out.println("-------------------------------------- t:" + t);
+                    System.out.println("-------------------------------------- position:" + position);
+                    System.out.println("-------------------------------------- dataInput.position():" + dataInput.position());
+                    System.out.println("-------------------------------------- size:" + size);
+                    System.out.println("-------------------------------------- dataInput.size():" + dataInput.size());
+                }
                 dataInput.seek(position);
             }
         }
