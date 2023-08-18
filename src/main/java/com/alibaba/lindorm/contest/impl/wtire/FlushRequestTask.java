@@ -114,14 +114,18 @@ public class FlushRequestTask extends Thread {
                 for (int i = 0; i < byteBuffersDataOutput.toWriteableBufferList().size(); i++) {
                     totalByte.put(byteBuffersDataOutput.toWriteableBufferList().get(i));
                 }
+                totalByte.flip();
                 byte[] zipBytes = DeflaterUtils.zipString(totalByte.array());
                 ByteBuffersDataOutput tempOutput = new ByteBuffersDataOutput();
                 tempOutput.writeVLong(row.getTimestamp());
                 tempOutput.writeVInt(zipBytes.length);
                 tempOutput.writeBytes(zipBytes);
+                totalByte = ByteBuffer.allocate((int) tempOutput.size());
                 for (ByteBuffer byteBuffer : tempOutput.toBufferList()) {
-                    dataWriteFileChanel.write(byteBuffer);
+                    totalByte.put(byteBuffer);
                 }
+                totalByte.flip();
+                dataWriteFileChanel.write(totalByte);
 
                 //add index
                 index.setBuffer(ByteBuffer.wrap(zipBytes));
