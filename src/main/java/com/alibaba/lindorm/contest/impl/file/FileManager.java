@@ -104,6 +104,7 @@ public class FileManager {
             wtireMap.put(vin, writeFileChannel);
             writeFileMap.put(tableName, wtireMap);
         }
+        getReadFileChannel(tableName, vin);
 
         //释放锁
         writeLock.unlock();
