@@ -6,24 +6,13 @@ import com.alibaba.lindorm.contest.impl.index.Index;
 import com.alibaba.lindorm.contest.impl.index.IndexLoader;
 import com.alibaba.lindorm.contest.impl.schema.SchemaMeta;
 import com.alibaba.lindorm.contest.impl.store.ByteBuffersDataInput;
-import com.alibaba.lindorm.contest.structs.ColumnValue;
-import com.alibaba.lindorm.contest.structs.LatestQueryRequest;
-import com.alibaba.lindorm.contest.structs.Row;
-import com.alibaba.lindorm.contest.structs.TimeRangeQueryRequest;
-import com.alibaba.lindorm.contest.structs.Vin;
+import com.alibaba.lindorm.contest.structs.*;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class DataQueryHandler {
     private final FileManager fileManager;
@@ -43,7 +32,7 @@ public class DataQueryHandler {
         try {
             result = executeLatestQuery(tableName, vinList, requestedColumns);
         } catch (Exception ex) {
-            System.out.println(">>> executeLatestQuery happen exception: " + ex.getMessage());
+            System.out.println(">>> executeLatestQuery happen exception: " + ex.getClass().getName());
             for (StackTraceElement stackTraceElement : ex.getStackTrace()) {
                 System.out.println(">>> executeLatestQuery happen exception: " + stackTraceElement.toString());
             }
@@ -63,7 +52,7 @@ public class DataQueryHandler {
         try {
             result = executeTimeRangeQuery(tableName, vin, requestedColumns, trReadReq.getTimeLowerBound(), trReadReq.getTimeUpperBound());
         } catch (Exception ex) {
-            System.out.println(">>> executeTimeRangeQuery happen exception: " + ex.getMessage());
+            System.out.println(">>> executeTimeRangeQuery happen exception: " + ex.getClass().getName());
             for (StackTraceElement stackTraceElement : ex.getStackTrace()) {
                 System.out.println(">>> executeTimeRangeQuery happen exception: " + stackTraceElement.toString());
             }
@@ -75,78 +64,18 @@ public class DataQueryHandler {
     private ArrayList<Row> executeLatestQuery(String tableName, Collection<Vin> vinList, Set<String> requestedColumns) throws IOException {
         SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
 
-        Map<Vin, Long> latestTimestamp = new HashMap<>();
         Map<Vin, Row> latestRowMap = new HashMap<>();
-        Set<String> vinNameSet = new HashSet<>();
         for (Vin vin : vinList) {
-            latestTimestamp.put(vin, 0L);
-            String vinReqStr = new String(vin.getVin());
-            vinNameSet.add(vinReqStr);
-        }
-        ByteBuffer sizeByteBuffer = ByteBuffer.allocate(1024 * 10);
-        for (Vin vin : vinList) {
-            FileChannel fileChannel = fileManager.getReadFileChannel(tableName, vin);
-            if (fileChannel == null || fileChannel.size() == 0) {
-                continue;
-            }
             Index latestIndex = IndexLoader.getLatestIndex(tableName, vin);
             if (latestIndex == null) {
-                return null;
+                continue;
             }
-            fileChannel.read(sizeByteBuffer, latestIndex.getOffset());
-            sizeByteBuffer.flip();
-            ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
+            byte[] unzipBytes = DeflaterUtils.unzipString(latestIndex.getBuffer().array());
+            ByteBuffersDataInput tempDataInput = new ByteBuffersDataInput(Collections.singletonList(ByteBuffer.wrap(unzipBytes)));
 
-            long t = dataInput.readVLong();
-            long size = dataInput.readVLong();
-            ByteBuffer tempBuffer = ByteBuffer.allocate((int) size);
-            dataInput.readBytes(tempBuffer, (int) size);
-            byte[] unzipBytes = DeflaterUtils.unzipString(tempBuffer.array());
-            dataInput = new ByteBuffersDataInput(Collections.singletonList(ByteBuffer.wrap(unzipBytes)));
-
-            Map<String, ColumnValue> columns = new HashMap<>();
-            ArrayList<String> integerColumnsNameList = schemaMeta.getIntegerColumnsName();
-            for (String cName : integerColumnsNameList) {
-                int intVal = dataInput.readVInt();
-                ColumnValue cVal = new ColumnValue.IntegerColumn(intVal);
-                if (requestedColumns.contains(cName)) {
-                    columns.put(cName, cVal);
-                }
-            }
-            ArrayList<String> doubleColumnsNameList = schemaMeta.getDoubleColumnsName();
-            for (String cName : doubleColumnsNameList) {
-                double doubleVal = dataInput.readZDouble();
-                ColumnValue cVal = new ColumnValue.DoubleFloatColumn(doubleVal);
-                if (requestedColumns.contains(cName)) {
-                    columns.put(cName, cVal);
-                }
-            }
-            ArrayList<String> stringColumnsNameList = schemaMeta.getStringColumnsName();
-            List<Integer> stringLengthList = new ArrayList<>();
-            for (String cName : stringColumnsNameList) {
-                int length = dataInput.readVInt();
-                stringLengthList.add(length);
-            }
-            String s = dataInput.readString();
-            ByteBuffer buffer = ByteBuffer.wrap(s.getBytes());
-            for (int i = 0; i < stringLengthList.size(); i++) {
-                int length = stringLengthList.get(i);
-                byte[] bytes = new byte[length];
-                for (int j = 0; j < length; j++) {
-                    bytes[j] = buffer.get();
-                }
-                String cName = stringColumnsNameList.get(i);
-                ColumnValue cVal = new ColumnValue.StringColumn(ByteBuffer.wrap(bytes));
-                if (requestedColumns.contains(cName)) {
-                    columns.put(cName, cVal);
-                }
-            }
-            if (latestTimestamp.get(vin) < t) {
-                //构建Row
-                latestRowMap.put(vin, new Row(vin, t, columns));
-                latestTimestamp.put(vin, t);
-            }
-            sizeByteBuffer.clear();
+            Map<String, ColumnValue> columns = getColumns(schemaMeta, tempDataInput, requestedColumns);
+            //构建Row
+            latestRowMap.put(vin, new Row(vin, latestIndex.getLatestTimestamp(), columns));
         }
         return new ArrayList<>(latestRowMap.values());
     }
@@ -161,54 +90,20 @@ public class DataQueryHandler {
             return new ArrayList<>();
         }
         MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
+        //最新值的偏移量
+        sizeByteBuffer.getLong();
         ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
         while (dataInput.position() < dataInput.size()) {
             long t = dataInput.readVLong();
-            long size = dataInput.readVLong();
+            int size = dataInput.readVInt();
             long position = dataInput.position() + size;
             if (t >= timeLowerBound && t < timeUpperBound) {
-                ByteBuffer tempBuffer = ByteBuffer.allocate((int) size);
-                dataInput.readBytes(tempBuffer, (int) size);
+                ByteBuffer tempBuffer = ByteBuffer.allocate(size);
+                dataInput.readBytes(tempBuffer, size);
                 byte[] unzipBytes = DeflaterUtils.unzipString(tempBuffer.array());
                 ByteBuffersDataInput tempDataInput = new ByteBuffersDataInput(Collections.singletonList(ByteBuffer.wrap(unzipBytes)));
 
-                Map<String, ColumnValue> columns = new HashMap<>();
-                ArrayList<String> integerColumnsNameList = schemaMeta.getIntegerColumnsName();
-                for (String cName : integerColumnsNameList) {
-                    int intVal = tempDataInput.readVInt();
-                    ColumnValue cVal = new ColumnValue.IntegerColumn(intVal);
-                    if (requestedColumns.contains(cName)) {
-                        columns.put(cName, cVal);
-                    }
-                }
-                ArrayList<String> doubleColumnsNameList = schemaMeta.getDoubleColumnsName();
-                for (String cName : doubleColumnsNameList) {
-                    double doubleVal = tempDataInput.readZDouble();
-                    ColumnValue cVal = new ColumnValue.DoubleFloatColumn(doubleVal);
-                    if (requestedColumns.contains(cName)) {
-                        columns.put(cName, cVal);
-                    }
-                }
-                ArrayList<String> stringColumnsNameList = schemaMeta.getStringColumnsName();
-                List<Integer> stringLengthList = new ArrayList<>();
-                for (String cName : stringColumnsNameList) {
-                    int length = tempDataInput.readVInt();
-                    stringLengthList.add(length);
-                }
-                String s = tempDataInput.readString();
-                ByteBuffer buffer = ByteBuffer.wrap(s.getBytes());
-                for (int i = 0; i < stringLengthList.size(); i++) {
-                    int length = stringLengthList.get(i);
-                    byte[] bytes = new byte[length];
-                    for (int j = 0; j < length; j++) {
-                        bytes[j] = buffer.get();
-                    }
-                    String cName = stringColumnsNameList.get(i);
-                    ColumnValue cVal = new ColumnValue.StringColumn(ByteBuffer.wrap(bytes));
-                    if (requestedColumns.contains(cName)) {
-                        columns.put(cName, cVal);
-                    }
-                }
+                Map<String, ColumnValue> columns = getColumns(schemaMeta, tempDataInput, requestedColumns);
 
                 ArrayList<Row> rows = timeRangeRowMap.get(vin);
                 if (rows == null) {
@@ -218,6 +113,13 @@ public class DataQueryHandler {
                 rows.add(row);
                 timeRangeRowMap.put(vin, rows);
             } else {
+                if (position > dataInput.size()) {
+                    System.out.println("-------------------------------------- t:" + t);
+                    System.out.println("-------------------------------------- position:" + position);
+                    System.out.println("-------------------------------------- dataInput.position():" + dataInput.position());
+                    System.out.println("-------------------------------------- size:" + size);
+                    System.out.println("-------------------------------------- dataInput.size():" + dataInput.size());
+                }
                 dataInput.seek(position);
             }
         }
@@ -227,5 +129,46 @@ public class DataQueryHandler {
             }
         }
         return rowList;
+    }
+
+    private Map<String, ColumnValue> getColumns(SchemaMeta schemaMeta, ByteBuffersDataInput tempDataInput, Set<String> requestedColumns) throws IOException {
+        Map<String, ColumnValue> columns = new HashMap<>();
+        ArrayList<String> integerColumnsNameList = schemaMeta.getIntegerColumnsName();
+        for (String cName : integerColumnsNameList) {
+            int intVal = tempDataInput.readVInt();
+            ColumnValue cVal = new ColumnValue.IntegerColumn(intVal);
+            if (requestedColumns.contains(cName)) {
+                columns.put(cName, cVal);
+            }
+        }
+        ArrayList<String> doubleColumnsNameList = schemaMeta.getDoubleColumnsName();
+        for (String cName : doubleColumnsNameList) {
+            double doubleVal = tempDataInput.readZDouble();
+            ColumnValue cVal = new ColumnValue.DoubleFloatColumn(doubleVal);
+            if (requestedColumns.contains(cName)) {
+                columns.put(cName, cVal);
+            }
+        }
+        ArrayList<String> stringColumnsNameList = schemaMeta.getStringColumnsName();
+        List<Integer> stringLengthList = new ArrayList<>();
+        for (String cName : stringColumnsNameList) {
+            int length = tempDataInput.readVInt();
+            stringLengthList.add(length);
+        }
+        String s = tempDataInput.readString();
+        ByteBuffer buffer = ByteBuffer.wrap(s.getBytes());
+        for (int i = 0; i < stringLengthList.size(); i++) {
+            int length = stringLengthList.get(i);
+            byte[] bytes = new byte[length];
+            for (int j = 0; j < length; j++) {
+                bytes[j] = buffer.get();
+            }
+            String cName = stringColumnsNameList.get(i);
+            ColumnValue cVal = new ColumnValue.StringColumn(ByteBuffer.wrap(bytes));
+            if (requestedColumns.contains(cName)) {
+                columns.put(cName, cVal);
+            }
+        }
+        return columns;
     }
 }

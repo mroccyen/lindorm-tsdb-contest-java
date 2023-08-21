@@ -26,11 +26,14 @@ public class FlushRequestTask extends Thread {
     private boolean stop = false;
     private final HandleRequestTask handleRequestTask;
     private final ByteBuffersDataOutput byteBuffersDataOutput;
+    private final ByteBuffer latestPositionBuffer;
 
     public FlushRequestTask(FileManager fileManager, HandleRequestTask handleRequestTask) {
         this.handleRequestTask = handleRequestTask;
         this.fileManager = fileManager;
         byteBuffersDataOutput = new ByteBuffersDataOutput();
+        latestPositionBuffer = ByteBuffer.allocate(8);
+        latestPositionBuffer.clear();
     }
 
     public void shutdown() {
@@ -107,16 +110,32 @@ public class FlushRequestTask extends Thread {
                 index.setLatestTimestamp(row.getTimestamp());
 
                 //压缩
-                ByteBuffer buffer = byteBuffersDataOutput.toWriteableBufferList().get(0);
-                byte[] zipBytes = DeflaterUtils.zipString(buffer.array());
+                ByteBuffer totalByte = ByteBuffer.allocate((int) byteBuffersDataOutput.size());
+                for (int i = 0; i < byteBuffersDataOutput.toWriteableBufferList().size(); i++) {
+                    totalByte.put(byteBuffersDataOutput.toWriteableBufferList().get(i));
+                }
+                totalByte.flip();
+                byte[] zipBytes = DeflaterUtils.zipString(totalByte.array());
                 ByteBuffersDataOutput tempOutput = new ByteBuffersDataOutput();
                 tempOutput.writeVLong(row.getTimestamp());
                 tempOutput.writeVInt(zipBytes.length);
                 tempOutput.writeBytes(zipBytes);
-                dataWriteFileChanel.write(tempOutput.toBufferList().get(0));
+                totalByte = ByteBuffer.allocate((int) tempOutput.size());
+                for (ByteBuffer byteBuffer : tempOutput.toBufferList()) {
+                    totalByte.put(byteBuffer);
+                }
+                totalByte.flip();
+                dataWriteFileChanel.write(totalByte);
 
                 //add index
-                IndexLoader.offerLatestIndex(tableName, vin, index);
+                index.setBuffer(ByteBuffer.wrap(zipBytes));
+                boolean b = IndexLoader.offerLatestIndex(tableName, vin, index);
+                if (b) {
+                    latestPositionBuffer.putLong(position);
+                    latestPositionBuffer.flip();
+                    dataWriteFileChanel.write(latestPositionBuffer, 0);
+                    latestPositionBuffer.clear();
+                }
 
                 //释放写文件锁
                 writeLock.unlock();

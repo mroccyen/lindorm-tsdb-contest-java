@@ -10,7 +10,6 @@ package com.alibaba.lindorm.contest;
 import com.alibaba.lindorm.contest.impl.file.FileManager;
 import com.alibaba.lindorm.contest.impl.index.IndexLoader;
 import com.alibaba.lindorm.contest.impl.index.IndexLoaderTask;
-import com.alibaba.lindorm.contest.impl.index.LatestIndexFlush;
 import com.alibaba.lindorm.contest.impl.query.DataQueryHandler;
 import com.alibaba.lindorm.contest.impl.schema.SchemaHandler;
 import com.alibaba.lindorm.contest.impl.wtire.HandleRequestTask;
@@ -28,7 +27,6 @@ public class TSDBEngineImpl extends TSDBEngine {
     private DataQueryHandler dataQueryHandler;
     private FileManager fileManager;
     private SchemaHandler schemaHandler;
-    private LatestIndexFlush latestIndexFlush;
 
     /**
      * This constructor's function signature should not be modified.
@@ -44,12 +42,11 @@ public class TSDBEngineImpl extends TSDBEngine {
         //初始化文件管理
         fileManager = new FileManager(getDataPath());
         fileManager.loadExistFile();
-        latestIndexFlush = new LatestIndexFlush(fileManager);
         //表信息处理
         schemaHandler = new SchemaHandler(fileManager, getDataPath());
         schemaHandler.loadTableInfo();
         //加载索引信息
-        indexLoaderTask = new IndexLoaderTask();
+        indexLoaderTask = new IndexLoaderTask(fileManager);
         indexLoaderTask.setName("IndexLoaderTask");
         indexLoaderTask.start();
         IndexLoader.loadLatestIndex(fileManager, indexLoaderTask);
@@ -73,7 +70,6 @@ public class TSDBEngineImpl extends TSDBEngine {
     public void shutdown() {
         writeTask.shutdown();
         indexLoaderTask.shutdown();
-        latestIndexFlush.flushLatestIndex();
         IndexLoader.shutdown();
         fileManager.shutdown();
         schemaHandler.flushTableInfo();
