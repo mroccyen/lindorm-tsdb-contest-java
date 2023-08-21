@@ -4,6 +4,7 @@ public class IndexLoadCompleteNotice {
     private boolean complete;
     private String tableName;
     private long offset;
+    private long timestamp;
     private byte[] vin;
 
     public boolean isComplete() {
@@ -30,6 +31,14 @@ public class IndexLoadCompleteNotice {
         this.offset = offset;
     }
 
+    public long getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(long timestamp) {
+        this.timestamp = timestamp;
+    }
+
     public byte[] getVin() {
         return vin;
     }
@@ -38,3 +47,4 @@ public class IndexLoadCompleteNotice {
         this.vin = vin;
     }
 }
+

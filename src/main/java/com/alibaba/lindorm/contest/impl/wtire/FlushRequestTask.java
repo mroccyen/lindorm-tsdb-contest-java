@@ -12,6 +12,7 @@ import com.alibaba.lindorm.contest.structs.Vin;
 import com.alibaba.lindorm.contest.structs.WriteRequest;
 
 import java.io.IOException;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
@@ -26,14 +27,11 @@ public class FlushRequestTask extends Thread {
     private boolean stop = false;
     private final HandleRequestTask handleRequestTask;
     private final ByteBuffersDataOutput byteBuffersDataOutput;
-    private final ByteBuffer latestPositionBuffer;
 
     public FlushRequestTask(FileManager fileManager, HandleRequestTask handleRequestTask) {
         this.handleRequestTask = handleRequestTask;
         this.fileManager = fileManager;
         byteBuffersDataOutput = new ByteBuffersDataOutput();
-        latestPositionBuffer = ByteBuffer.allocate(8);
-        latestPositionBuffer.clear();
     }
 
     public void shutdown() {
@@ -129,12 +127,7 @@ public class FlushRequestTask extends Thread {
 
                 //add index
                 index.setBuffer(ByteBuffer.wrap(zipBytes));
-                boolean b = IndexLoader.offerLatestIndex(tableName, vin, index);
-                if (b) {
-                    latestPositionBuffer.putLong(position);
-                    dataWriteFileChanel.write(latestPositionBuffer, 0);
-                    latestPositionBuffer.clear();
-                }
+                IndexLoader.offerLatestIndex(tableName, vin, index);
 
                 //释放写文件锁
                 writeLock.unlock();

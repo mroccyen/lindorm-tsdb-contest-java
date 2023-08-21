@@ -69,6 +69,10 @@ public class MyEvaluationSample {
             tsdbEngineSample.connect();
             tsdbEngineSample.createTable("test", schema);
 
+//            ByteBuffer buffer = ByteBuffer.allocate(3);
+//            buffer.put((byte) 70);
+//            buffer.put((byte) 71);
+//            buffer.put((byte) 72);
             String s = ">>> executeTimeRangeQuery happen exception: java.io.EOFException>>> executeTimeRangeQuery happen exception: com.alibaba.lindorm.contest.impl.store.ByteBuffersDataInput.seek(ByteBuffersDataInput.java:393)>>> executeTimeRangeQuery happen exception: com.alibaba.lindorm.contest.impl.query.DataQueryHandler.executeTimeRangeQuery(DataQueryHandler.java:116)>>> executeTimeRangeQuery happen exception: com.alibaba.lindorm.contest.impl.query.DataQueryHandler.executeTimeRangeQuery(DataQueryHandler.java:53)>>> executeTimeRangeQuery happen exception: com.alibaba.lindorm.contest.TSDBEngineImpl.executeTimeRangeQuery(TSDBEngineImpl.java:102)>>> executeTimeRangeQuery happen exception: com.alibaba.lindorm.contest.adapter.JavaEngineAdapter.executeTimeRangeQuery0(JavaEngineAdapter.java:61)>>> executeTimeRangeQuery happen exception: com.alibaba.lindorm.contest.adapter.EngineAdapter.executeTimeRangeQuery(EngineAdapter.java:72)>>> executeTimeRangeQuery happen exception: com.alibaba.lindorm.contest.execute.write.DataWriter.pickupCheckWrittenData(DataWriter.java:93)>>> executeTimeRangeQuery happen exception: com.alibaba.lindorm.contest.execute.write.DataWriter.run(DataWriter.java:64)>>> executeTimeRangeQuery happen exception: java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1128)>>> executeTimeRangeQuery happen exception: java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:628)>>> executeTimeRangeQuery happen exception: java.base/java.lang.Thread.run(Thread.java:830)";
             ByteBuffer buffer = ByteBuffer.allocate(1544);
             buffer.put(s.getBytes());
