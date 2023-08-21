@@ -126,7 +126,7 @@ public class DataQueryHandler {
         Map<String, ColumnValue> columns = new HashMap<>();
         ArrayList<String> integerColumnsNameList = schemaMeta.getIntegerColumnsName();
         for (String cName : integerColumnsNameList) {
-            int intVal = tempDataInput.readVInt();
+            int intVal = tempDataInput.readZInt();
             ColumnValue cVal = new ColumnValue.IntegerColumn(intVal);
             if (requestedColumns.contains(cName)) {
                 columns.put(cName, cVal);

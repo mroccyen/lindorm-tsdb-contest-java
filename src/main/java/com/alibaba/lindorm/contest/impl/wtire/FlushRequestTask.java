@@ -76,7 +76,7 @@ public class FlushRequestTask extends Thread {
                 for (String cName : integerColumnsNameList) {
                     ColumnValue cVal = row.getColumns().get(cName);
                     ColumnValue.IntegerColumn integerColumn = (ColumnValue.IntegerColumn) cVal;
-                    byteBuffersDataOutput.writeVInt(integerColumn.getIntegerValue());
+                    byteBuffersDataOutput.writeZInt(integerColumn.getIntegerValue());
                 }
 
                 ArrayList<String> doubleColumnsNameList = schemaMeta.getDoubleColumnsName();
