@@ -5,7 +5,7 @@ import java.nio.ByteBuffer;
 public class Index {
     private long offset;
     private byte[] rowKey;
-    private long latestTimestamp;
+    private int delta;
     private ByteBuffer buffer;
 
     public long getOffset() {
@@ -24,19 +24,19 @@ public class Index {
         this.rowKey = rowKey;
     }
 
-    public long getLatestTimestamp() {
-        return latestTimestamp;
-    }
-
-    public void setLatestTimestamp(long latestTimestamp) {
-        this.latestTimestamp = latestTimestamp;
-    }
-
     public ByteBuffer getBuffer() {
         return buffer;
     }
 
     public void setBuffer(ByteBuffer buffer) {
         this.buffer = buffer;
+    }
+
+    public int getDelta() {
+        return delta;
+    }
+
+    public void setDelta(int delta) {
+        this.delta = delta;
     }
 }

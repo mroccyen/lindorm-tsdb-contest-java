@@ -60,8 +60,8 @@ public class IndexLoaderTask extends Thread {
                         sizeByteBuffer.flip();
                         ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
 
-                        long l = dataInput.readVLong();
-                        index.setLatestTimestamp(l);
+                        int delta = dataInput.readVInt();
+                        index.setDelta(delta);
                         long size = dataInput.readVInt();
                         ByteBuffer tempBuffer = ByteBuffer.allocate((int) size);
                         dataInput.readBytes(tempBuffer, (int) size);

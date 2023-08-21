@@ -16,7 +16,7 @@ public class IndexLoader {
         if (LATEST_INDEX_CACHE_MAP.containsKey(tableName)) {
             ConcurrentHashMap<Vin, Index> map = LATEST_INDEX_CACHE_MAP.get(tableName);
             Index i = map.get(vin);
-            if (i == null || i.getLatestTimestamp() <= index.getLatestTimestamp()) {
+            if (i == null || i.getDelta() <= index.getDelta()) {
                 map.put(vin, index);
             }
         } else {

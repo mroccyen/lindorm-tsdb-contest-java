@@ -1,5 +1,6 @@
 package com.alibaba.lindorm.contest.impl.query;
 
+import com.alibaba.lindorm.contest.impl.common.CommonSetting;
 import com.alibaba.lindorm.contest.impl.compress.DeflaterUtils;
 import com.alibaba.lindorm.contest.impl.file.FileManager;
 import com.alibaba.lindorm.contest.impl.index.Index;
@@ -75,7 +76,7 @@ public class DataQueryHandler {
 
             Map<String, ColumnValue> columns = getColumns(schemaMeta, tempDataInput, requestedColumns);
             //构建Row
-            latestRowMap.put(vin, new Row(vin, latestIndex.getLatestTimestamp(), columns));
+            latestRowMap.put(vin, new Row(vin, CommonSetting.DEFAULT_TIMESTAMP + latestIndex.getDelta(), columns));
         }
         return new ArrayList<>(latestRowMap.values());
     }
@@ -92,7 +93,8 @@ public class DataQueryHandler {
         MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
         ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
         while (dataInput.position() < dataInput.size()) {
-            long t = dataInput.readVLong();
+            int delta = dataInput.readVInt();
+            long t = CommonSetting.DEFAULT_TIMESTAMP + delta;
             long size = dataInput.readVLong();
             long position = dataInput.position() + size;
             if (t >= timeLowerBound && t < timeUpperBound) {

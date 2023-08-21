@@ -1,5 +1,6 @@
 package com.alibaba.lindorm.contest.impl.wtire;
 
+import com.alibaba.lindorm.contest.impl.common.CommonSetting;
 import com.alibaba.lindorm.contest.impl.compress.DeflaterUtils;
 import com.alibaba.lindorm.contest.impl.file.FileManager;
 import com.alibaba.lindorm.contest.impl.index.Index;
@@ -96,11 +97,12 @@ public class FlushRequestTask extends Thread {
                 //获得写文件锁
                 FileLock lock = dataWriteFileChanel.lock();
 
+                int delta = (int) (row.getTimestamp() - CommonSetting.DEFAULT_TIMESTAMP);
                 long position = dataWriteFileChanel.position();
                 Index index = new Index();
                 index.setOffset(position);
                 index.setRowKey(vin.getVin());
-                index.setLatestTimestamp(row.getTimestamp());
+                index.setDelta(delta);
 
                 //压缩
                 ByteBuffer totalByte = ByteBuffer.allocate((int) byteBuffersDataOutput.size());
@@ -110,7 +112,7 @@ public class FlushRequestTask extends Thread {
                 totalByte.flip();
                 byte[] zipBytes = DeflaterUtils.zipString(totalByte.array());
                 ByteBuffersDataOutput tempOutput = new ByteBuffersDataOutput();
-                tempOutput.writeVLong(row.getTimestamp());
+                tempOutput.writeVInt(delta);
                 tempOutput.writeVInt(zipBytes.length);
                 tempOutput.writeBytes(zipBytes);
                 totalByte = ByteBuffer.allocate((int) tempOutput.size());
