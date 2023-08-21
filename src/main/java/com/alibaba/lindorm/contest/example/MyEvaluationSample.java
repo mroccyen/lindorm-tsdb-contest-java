@@ -69,10 +69,9 @@ public class MyEvaluationSample {
             tsdbEngineSample.connect();
             tsdbEngineSample.createTable("test", schema);
 
-            ByteBuffer buffer = ByteBuffer.allocate(3);
-            buffer.put((byte) 70);
-            buffer.put((byte) 71);
-            buffer.put((byte) 72);
+            String s = ">>> executeTimeRangeQuery happen exception: java.io.EOFException>>> executeTimeRangeQuery happen exception: com.alibaba.lindorm.contest.impl.store.ByteBuffersDataInput.seek(ByteBuffersDataInput.java:393)>>> executeTimeRangeQuery happen exception: com.alibaba.lindorm.contest.impl.query.DataQueryHandler.executeTimeRangeQuery(DataQueryHandler.java:116)>>> executeTimeRangeQuery happen exception: com.alibaba.lindorm.contest.impl.query.DataQueryHandler.executeTimeRangeQuery(DataQueryHandler.java:53)>>> executeTimeRangeQuery happen exception: com.alibaba.lindorm.contest.TSDBEngineImpl.executeTimeRangeQuery(TSDBEngineImpl.java:102)>>> executeTimeRangeQuery happen exception: com.alibaba.lindorm.contest.adapter.JavaEngineAdapter.executeTimeRangeQuery0(JavaEngineAdapter.java:61)>>> executeTimeRangeQuery happen exception: com.alibaba.lindorm.contest.adapter.EngineAdapter.executeTimeRangeQuery(EngineAdapter.java:72)>>> executeTimeRangeQuery happen exception: com.alibaba.lindorm.contest.execute.write.DataWriter.pickupCheckWrittenData(DataWriter.java:93)>>> executeTimeRangeQuery happen exception: com.alibaba.lindorm.contest.execute.write.DataWriter.run(DataWriter.java:64)>>> executeTimeRangeQuery happen exception: java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1128)>>> executeTimeRangeQuery happen exception: java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:628)>>> executeTimeRangeQuery happen exception: java.base/java.lang.Thread.run(Thread.java:830)";
+            ByteBuffer buffer = ByteBuffer.allocate(1544);
+            buffer.put(s.getBytes());
             buffer.flip();
             Map<String, ColumnValue> columns1 = new HashMap<>();
             columns1.put("col1", new ColumnValue.IntegerColumn(123));
@@ -81,7 +80,7 @@ public class MyEvaluationSample {
             String str = "12345678912345678";
             ArrayList<Row> rowList = new ArrayList<>();
 
-            rowList.add(new Row(new Vin(str.getBytes(StandardCharsets.UTF_8)), 50, columns1));
+            rowList.add(new Row(new Vin(str.getBytes(StandardCharsets.UTF_8)), 1689091341, columns1));
             tsdbEngineSample.upsert(new WriteRequest("test", rowList));
 
             //read
@@ -117,11 +116,11 @@ public class MyEvaluationSample {
             columns.put("col3", new ColumnValue.StringColumn(buffer));
             String str1 = "12345678912345678";
             rowList = new ArrayList<>();
-            rowList.add(new Row(new Vin(str1.getBytes(StandardCharsets.UTF_8)), 11, columns));
+            rowList.add(new Row(new Vin(str1.getBytes(StandardCharsets.UTF_8)), 1689091340, columns));
             String str2 = "98765432123456789";
-            rowList.add(new Row(new Vin(str2.getBytes(StandardCharsets.UTF_8)), 1, columns));
-            rowList.add(new Row(new Vin(str2.getBytes(StandardCharsets.UTF_8)), 2, columns));
-            rowList.add(new Row(new Vin(str2.getBytes(StandardCharsets.UTF_8)), 3, columns));
+            rowList.add(new Row(new Vin(str2.getBytes(StandardCharsets.UTF_8)), 1689091341, columns));
+            rowList.add(new Row(new Vin(str2.getBytes(StandardCharsets.UTF_8)), 1689091342, columns));
+            rowList.add(new Row(new Vin(str2.getBytes(StandardCharsets.UTF_8)), 1689091343, columns));
 
             ArrayList<Vin> vinList3 = new ArrayList<>();
             vinList3.add(new Vin(str1.getBytes(StandardCharsets.UTF_8)));
@@ -131,7 +130,7 @@ public class MyEvaluationSample {
             tsdbEngineSample.upsert(new WriteRequest("test", rowList));
             ArrayList<Row> resultSet3 = tsdbEngineSample.executeLatestQuery(new LatestQueryRequest("test", vinList3, requestedColumns3));
             showResult(resultSet3);
-            resultSet3 = tsdbEngineSample.executeTimeRangeQuery(new TimeRangeQueryRequest("test", new Vin(str2.getBytes(StandardCharsets.UTF_8)), requestedColumns3, 1, 3));
+            resultSet3 = tsdbEngineSample.executeTimeRangeQuery(new TimeRangeQueryRequest("test", new Vin(str2.getBytes(StandardCharsets.UTF_8)), requestedColumns3, 1689091341, 1689091343));
             showResult(resultSet3);
 
             tsdbEngineSample.shutdown();

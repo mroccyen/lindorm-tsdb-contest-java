@@ -6,6 +6,7 @@ import com.alibaba.lindorm.contest.structs.Vin;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -98,6 +99,10 @@ public class FileManager {
         }
 
         FileChannel writeFileChannel = FileChannel.open(f.toPath(), APPEND);
+        //插入最新值的偏移量
+        ByteBuffer buffer = ByteBuffer.allocate(8);
+        buffer.putLong(8);
+        writeFileChannel.write(buffer);
         Map<Vin, FileChannel> wtireMap = writeFileMap.get(tableName);
         if (wtireMap != null) {
             wtireMap.put(vin, writeFileChannel);
@@ -106,6 +111,7 @@ public class FileManager {
             wtireMap.put(vin, writeFileChannel);
             writeFileMap.put(tableName, wtireMap);
         }
+        getReadFileChannel(tableName, vin);
 
         //释放锁
         writeLock.unlock();
