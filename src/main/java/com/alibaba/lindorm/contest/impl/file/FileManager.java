@@ -1,24 +1,20 @@
 package com.alibaba.lindorm.contest.impl.file;
 
-import com.alibaba.lindorm.contest.impl.schema.SchemaMeta;
 import com.alibaba.lindorm.contest.impl.common.CommonSetting;
+import com.alibaba.lindorm.contest.impl.schema.SchemaMeta;
 import com.alibaba.lindorm.contest.structs.Vin;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.*;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 import static java.nio.file.StandardOpenOption.APPEND;
 import static java.nio.file.StandardOpenOption.READ;
 
 public class FileManager {
     private Map<String, Map<Vin, FileChannel>> writeFileMap = new ConcurrentHashMap<>();
-    private Map<String, Map<Vin, Lock>> writeLockMap = new ConcurrentHashMap<>();
     private Map<String, Map<Vin, FileChannel>> readFileMap = new ConcurrentHashMap<>();
     private final File dataPath;
     private final Map<String, SchemaMeta> tableSchemaMetaMap = new ConcurrentHashMap<>();
@@ -36,7 +32,6 @@ public class FileManager {
                 String tableName = dir.getName();
                 Map<Vin, FileChannel> readFileChannelMap = new ConcurrentHashMap<>();
                 Map<Vin, FileChannel> writeFileChannelMap = new ConcurrentHashMap<>();
-                Map<Vin, Lock> writeFileLock = new ConcurrentHashMap<>();
                 File[] dataFiles = dir.listFiles();
                 if (dataFiles != null) {
                     for (File dataFile : dataFiles) {
@@ -53,11 +48,8 @@ public class FileManager {
 
                         FileChannel writeFileChannel = FileChannel.open(dataFile.toPath(), APPEND);
                         writeFileChannelMap.put(vin, writeFileChannel);
-
-                        writeFileLock.put(vin, new ReentrantLock());
                     }
                     writeFileMap.put(tableName, writeFileChannelMap);
-                    writeLockMap.put(tableName, writeFileLock);
                     readFileMap.put(tableName, readFileChannelMap);
                 }
             }
@@ -68,18 +60,6 @@ public class FileManager {
         Map<Vin, FileChannel> channelMap = writeFileMap.get(tableName);
         if (channelMap != null) {
             FileChannel channel = channelMap.get(vin);
-            if (channel != null) {
-                return channel;
-            }
-        }
-        //加锁
-        Lock writeLock = getWriteLock(tableName, vin);
-        writeLock.lock();
-
-        //拿到锁后先查询一次，可能会出现之前有线程创建了
-        Map<Vin, FileChannel> fileChannelMap = writeFileMap.get(tableName);
-        if (fileChannelMap != null) {
-            FileChannel channel = fileChannelMap.get(vin);
             if (channel != null) {
                 return channel;
             }
@@ -99,10 +79,6 @@ public class FileManager {
         }
 
         FileChannel writeFileChannel = FileChannel.open(f.toPath(), APPEND);
-        //插入最新值的偏移量
-        ByteBuffer buffer = ByteBuffer.allocate(8);
-        buffer.putLong(8);
-        writeFileChannel.write(buffer);
         Map<Vin, FileChannel> wtireMap = writeFileMap.get(tableName);
         if (wtireMap != null) {
             wtireMap.put(vin, writeFileChannel);
@@ -112,9 +88,6 @@ public class FileManager {
             writeFileMap.put(tableName, wtireMap);
         }
         getReadFileChannel(tableName, vin);
-
-        //释放锁
-        writeLock.unlock();
 
         return writeFileChannel;
     }
@@ -147,15 +120,6 @@ public class FileManager {
         return channel;
     }
 
-    public Lock getWriteLock(String tableName, Vin vin) {
-        Map<Vin, Lock> lockMap = writeLockMap.get(tableName);
-        Lock writeLock = lockMap.get(vin);
-        if (writeLock != null) {
-            return writeLock;
-        }
-        return lockMap.computeIfAbsent(vin, key -> new ReentrantLock());
-    }
-
     public void shutdown() {
         try {
             for (Map.Entry<String, Map<Vin, FileChannel>> e : writeFileMap.entrySet()) {
@@ -176,7 +140,6 @@ public class FileManager {
                 file.getValue().close();
             }
             writeFileMap = null;
-            writeLockMap = null;
             readFileMap = null;
             writeLatestIndexFileMap = null;
             readLatestIndexFileMap = null;
@@ -191,10 +154,6 @@ public class FileManager {
 
     public Map<String, Map<Vin, FileChannel>> getReadFileMap() {
         return readFileMap;
-    }
-
-    public void initTableWriteLockMap(String tableName) {
-        writeLockMap.put(tableName, new ConcurrentHashMap<>());
     }
 
     public void addSchemaMeta(String tableName, SchemaMeta schemaMeta) {

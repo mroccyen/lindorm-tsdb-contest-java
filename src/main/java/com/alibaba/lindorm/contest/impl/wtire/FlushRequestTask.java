@@ -14,12 +14,12 @@ import com.alibaba.lindorm.contest.structs.WriteRequest;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Lock;
 
 public class FlushRequestTask extends Thread {
     private final FileManager fileManager;
@@ -94,8 +94,7 @@ public class FlushRequestTask extends Thread {
                 }
 
                 //获得写文件锁
-                Lock writeLock = fileManager.getWriteLock(tableName, vin);
-                writeLock.lock();
+                FileLock lock = dataWriteFileChanel.lock();
 
                 long position = dataWriteFileChanel.position();
                 Index index = new Index();
@@ -126,7 +125,7 @@ public class FlushRequestTask extends Thread {
                 IndexLoader.offerLatestIndex(tableName, vin, index);
 
                 //释放写文件锁
-                writeLock.unlock();
+                lock.close();
 
                 byteBuffersDataOutput.reset();
             }
