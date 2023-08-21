@@ -51,7 +51,6 @@ public class IndexLoaderTask extends Thread {
                         Index index = new Index();
                         index.setOffset(notice.getOffset());
                         index.setRowKey(notice.getVin());
-                        index.setLatestTimestamp(notice.getTimestamp());
 
                         FileChannel fileChannel = fileManager.getReadFileChannel(notice.getTableName(), new Vin(notice.getVin()));
                         if (fileChannel == null || fileChannel.size() == 0) {
@@ -61,8 +60,9 @@ public class IndexLoaderTask extends Thread {
                         sizeByteBuffer.flip();
                         ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
 
-                        dataInput.readVLong();
-                        long size = dataInput.readVLong();
+                        long l = dataInput.readVLong();
+                        index.setLatestTimestamp(l);
+                        long size = dataInput.readVInt();
                         ByteBuffer tempBuffer = ByteBuffer.allocate((int) size);
                         dataInput.readBytes(tempBuffer, (int) size);
                         index.setBuffer(ByteBuffer.wrap(tempBuffer.array()));

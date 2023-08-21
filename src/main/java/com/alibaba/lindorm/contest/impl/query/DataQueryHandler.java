@@ -32,7 +32,7 @@ public class DataQueryHandler {
         try {
             result = executeLatestQuery(tableName, vinList, requestedColumns);
         } catch (Exception ex) {
-            System.out.println(">>> executeLatestQuery happen exception: " + ex.getMessage());
+            System.out.println(">>> executeLatestQuery happen exception: " + ex.getClass().getName());
             for (StackTraceElement stackTraceElement : ex.getStackTrace()) {
                 System.out.println(">>> executeLatestQuery happen exception: " + stackTraceElement.toString());
             }
@@ -52,7 +52,7 @@ public class DataQueryHandler {
         try {
             result = executeTimeRangeQuery(tableName, vin, requestedColumns, trReadReq.getTimeLowerBound(), trReadReq.getTimeUpperBound());
         } catch (Exception ex) {
-            System.out.println(">>> executeTimeRangeQuery happen exception: " + ex.getMessage());
+            System.out.println(">>> executeTimeRangeQuery happen exception: " + ex.getClass().getName());
             for (StackTraceElement stackTraceElement : ex.getStackTrace()) {
                 System.out.println(">>> executeTimeRangeQuery happen exception: " + stackTraceElement.toString());
             }
@@ -90,14 +90,16 @@ public class DataQueryHandler {
             return new ArrayList<>();
         }
         MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
+        //最新值的偏移量
+        sizeByteBuffer.getLong();
         ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
         while (dataInput.position() < dataInput.size()) {
             long t = dataInput.readVLong();
-            long size = dataInput.readVLong();
+            int size = dataInput.readVInt();
             long position = dataInput.position() + size;
             if (t >= timeLowerBound && t < timeUpperBound) {
-                ByteBuffer tempBuffer = ByteBuffer.allocate((int) size);
-                dataInput.readBytes(tempBuffer, (int) size);
+                ByteBuffer tempBuffer = ByteBuffer.allocate(size);
+                dataInput.readBytes(tempBuffer, size);
                 byte[] unzipBytes = DeflaterUtils.unzipString(tempBuffer.array());
                 ByteBuffersDataInput tempDataInput = new ByteBuffersDataInput(Collections.singletonList(ByteBuffer.wrap(unzipBytes)));
 
@@ -111,6 +113,13 @@ public class DataQueryHandler {
                 rows.add(row);
                 timeRangeRowMap.put(vin, rows);
             } else {
+                if (position > dataInput.size()) {
+                    System.out.println("-------------------------------------- t:" + t);
+                    System.out.println("-------------------------------------- position:" + position);
+                    System.out.println("-------------------------------------- dataInput.position():" + dataInput.position());
+                    System.out.println("-------------------------------------- size:" + size);
+                    System.out.println("-------------------------------------- dataInput.size():" + dataInput.size());
+                }
                 dataInput.seek(position);
             }
         }
