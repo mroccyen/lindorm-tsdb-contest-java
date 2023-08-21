@@ -141,21 +141,9 @@ public class DataQueryHandler {
             }
         }
         ArrayList<String> stringColumnsNameList = schemaMeta.getStringColumnsName();
-        List<Integer> stringLengthList = new ArrayList<>();
         for (String cName : stringColumnsNameList) {
-            int length = tempDataInput.readVInt();
-            stringLengthList.add(length);
-        }
-        String s = tempDataInput.readString();
-        ByteBuffer buffer = ByteBuffer.wrap(s.getBytes());
-        for (int i = 0; i < stringLengthList.size(); i++) {
-            int length = stringLengthList.get(i);
-            byte[] bytes = new byte[length];
-            for (int j = 0; j < length; j++) {
-                bytes[j] = buffer.get();
-            }
-            String cName = stringColumnsNameList.get(i);
-            ColumnValue cVal = new ColumnValue.StringColumn(ByteBuffer.wrap(bytes));
+            String s = tempDataInput.readString();
+            ColumnValue cVal = new ColumnValue.StringColumn(ByteBuffer.wrap(s.getBytes()));
             if (requestedColumns.contains(cName)) {
                 columns.put(cName, cVal);
             }

@@ -12,7 +12,6 @@ import com.alibaba.lindorm.contest.structs.Vin;
 import com.alibaba.lindorm.contest.structs.WriteRequest;
 
 import java.io.IOException;
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
@@ -87,15 +86,12 @@ public class FlushRequestTask extends Thread {
                 }
 
                 ArrayList<String> stringColumnsNameList = schemaMeta.getStringColumnsName();
-                StringBuilder builder = new StringBuilder();
                 for (String cName : stringColumnsNameList) {
                     ColumnValue cVal = row.getColumns().get(cName);
                     ColumnValue.StringColumn stringColumn = (ColumnValue.StringColumn) cVal;
                     ByteBuffer stringValue = stringColumn.getStringValue();
-                    byteBuffersDataOutput.writeVInt(stringValue.remaining());
-                    builder.append(new String(stringValue.array()));
+                    byteBuffersDataOutput.writeString(new String(stringValue.array()));
                 }
-                byteBuffersDataOutput.writeString(builder.toString());
 
                 //获得写文件锁
                 Lock writeLock = fileManager.getWriteLock(tableName, vin);
