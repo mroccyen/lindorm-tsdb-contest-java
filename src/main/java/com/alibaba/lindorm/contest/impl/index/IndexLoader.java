@@ -54,12 +54,10 @@ public class IndexLoader {
                     vinByte[i] = dataByteBuffer.get();
                 }
                 long offset = dataByteBuffer.getLong();
-                long timestamp = dataByteBuffer.getLong();
                 IndexLoadCompleteNotice notice = new IndexLoadCompleteNotice();
                 notice.setComplete(false);
                 notice.setTableName(tableName);
                 notice.setOffset(offset);
-                notice.setTimestamp(timestamp);
                 notice.setVin(vinByte);
                 try {
                     indexLoaderTask.getWriteRequestQueue().put(notice);

@@ -18,14 +18,13 @@ public class LatestIndexFlush {
     public void flushLatestIndex() {
         try {
             //每个线程有10M缓冲区用于写数据
-            ByteBuffer dataWriteByteBuffer = ByteBuffer.allocate(33);
+            ByteBuffer dataWriteByteBuffer = ByteBuffer.allocate(25);
             ConcurrentHashMap<String, ConcurrentHashMap<Vin, Index>> latestIndexCacheMap = IndexLoader.getLatestIndexCacheMap();
             for (Map.Entry<String, ConcurrentHashMap<Vin, Index>> entry : latestIndexCacheMap.entrySet()) {
                 FileChannel latestIndexFileChannel = fileManager.getWriteLatestIndexFile(entry.getKey());
                 for (Map.Entry<Vin, Index> e : entry.getValue().entrySet()) {
                     dataWriteByteBuffer.put(e.getValue().getRowKey());
                     dataWriteByteBuffer.putLong(e.getValue().getOffset());
-                    dataWriteByteBuffer.putLong(e.getValue().getLatestTimestamp());
                     dataWriteByteBuffer.flip();
                     latestIndexFileChannel.write(dataWriteByteBuffer);
                     dataWriteByteBuffer.clear();
