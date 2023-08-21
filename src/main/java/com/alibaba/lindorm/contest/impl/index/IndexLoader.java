@@ -94,4 +94,8 @@ public class IndexLoader {
         System.out.println(">>> initIndexBuffer load exist index time: " + (end - start));
         System.out.println(">>> initIndexBuffer load exist index data complete");
     }
+
+//    public static ConcurrentHashMap<String, ConcurrentHashMap<Vin, Index>> getLatestIndexCacheMap() {
+//        return LATEST_INDEX_CACHE_MAP;
+//    }
 }

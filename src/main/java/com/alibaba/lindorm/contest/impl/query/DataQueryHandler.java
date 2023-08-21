@@ -90,16 +90,16 @@ public class DataQueryHandler {
             return new ArrayList<>();
         }
         MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
-        //最新值的偏移量
-        sizeByteBuffer.getLong();
         ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
+        //最新值的偏移量
+        dataInput.readLong();
         while (dataInput.position() < dataInput.size()) {
             long t = dataInput.readVLong();
-            int size = dataInput.readVInt();
+            long size = dataInput.readVLong();
             long position = dataInput.position() + size;
             if (t >= timeLowerBound && t < timeUpperBound) {
-                ByteBuffer tempBuffer = ByteBuffer.allocate(size);
-                dataInput.readBytes(tempBuffer, size);
+                ByteBuffer tempBuffer = ByteBuffer.allocate((int) size);
+                dataInput.readBytes(tempBuffer, (int) size);
                 byte[] unzipBytes = DeflaterUtils.unzipString(tempBuffer.array());
                 ByteBuffersDataInput tempDataInput = new ByteBuffersDataInput(Collections.singletonList(ByteBuffer.wrap(unzipBytes)));
 
@@ -113,13 +113,6 @@ public class DataQueryHandler {
                 rows.add(row);
                 timeRangeRowMap.put(vin, rows);
             } else {
-                if (position > dataInput.size()) {
-                    System.out.println("-------------------------------------- t:" + t);
-                    System.out.println("-------------------------------------- position:" + position);
-                    System.out.println("-------------------------------------- dataInput.position():" + dataInput.position());
-                    System.out.println("-------------------------------------- size:" + size);
-                    System.out.println("-------------------------------------- dataInput.size():" + dataInput.size());
-                }
                 dataInput.seek(position);
             }
         }
