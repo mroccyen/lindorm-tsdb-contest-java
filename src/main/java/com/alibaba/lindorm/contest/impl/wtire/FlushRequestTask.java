@@ -97,7 +97,7 @@ public class FlushRequestTask extends Thread {
                 //获得写文件锁
                 FileLock lock = dataWriteFileChanel.lock();
 
-                int delta = (int) (row.getTimestamp() - CommonSetting.DEFAULT_TIMESTAMP);
+                long delta = row.getTimestamp() - CommonSetting.DEFAULT_TIMESTAMP;
                 long position = dataWriteFileChanel.position();
                 Index index = new Index();
                 index.setOffset(position);
@@ -112,7 +112,7 @@ public class FlushRequestTask extends Thread {
                 totalByte.flip();
                 byte[] zipBytes = DeflaterUtils.zipString(totalByte.array());
                 ByteBuffersDataOutput tempOutput = new ByteBuffersDataOutput();
-                tempOutput.writeVInt(delta);
+                tempOutput.writeVLong(delta);
                 tempOutput.writeVInt(zipBytes.length);
                 tempOutput.writeBytes(zipBytes);
                 totalByte = ByteBuffer.allocate((int) tempOutput.size());

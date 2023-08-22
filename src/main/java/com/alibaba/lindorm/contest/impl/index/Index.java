@@ -5,7 +5,7 @@ import java.nio.ByteBuffer;
 public class Index {
     private long offset;
     private byte[] rowKey;
-    private int delta;
+    private long delta;
     private ByteBuffer buffer;
 
     public long getOffset() {
@@ -32,11 +32,11 @@ public class Index {
         this.buffer = buffer;
     }
 
-    public int getDelta() {
+    public long getDelta() {
         return delta;
     }
 
-    public void setDelta(int delta) {
+    public void setDelta(long delta) {
         this.delta = delta;
     }
 }

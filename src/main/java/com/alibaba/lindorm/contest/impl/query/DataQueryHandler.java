@@ -93,7 +93,7 @@ public class DataQueryHandler {
         MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
         ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
         while (dataInput.position() < dataInput.size()) {
-            int delta = dataInput.readVInt();
+            long delta = dataInput.readVLong();
             long t = CommonSetting.DEFAULT_TIMESTAMP + delta;
             long size = dataInput.readVLong();
             long position = dataInput.position() + size;
