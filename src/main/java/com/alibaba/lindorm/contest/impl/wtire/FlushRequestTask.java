@@ -1,7 +1,6 @@
 package com.alibaba.lindorm.contest.impl.wtire;
 
 import com.alibaba.lindorm.contest.impl.common.CommonSetting;
-import com.alibaba.lindorm.contest.impl.compress.DeflaterUtils;
 import com.alibaba.lindorm.contest.impl.file.FileManager;
 import com.alibaba.lindorm.contest.impl.index.Index;
 import com.alibaba.lindorm.contest.impl.index.IndexLoader;
@@ -112,11 +111,10 @@ public class FlushRequestTask extends Thread {
                 }
                 totalByte.flip();
                 byte[] bytes = totalByte.array();
-                byte[] zipBytes = DeflaterUtils.zipString(bytes);
                 ByteBuffersDataOutput tempOutput = new ByteBuffersDataOutput();
                 tempOutput.writeVLong(delta);
-                tempOutput.writeVInt(zipBytes.length);
-                tempOutput.writeBytes(zipBytes);
+                tempOutput.writeVInt(bytes.length);
+                tempOutput.writeBytes(bytes);
                 totalByte = ByteBuffer.allocate((int) tempOutput.size());
                 for (ByteBuffer byteBuffer : tempOutput.toBufferList()) {
                     totalByte.put(byteBuffer);

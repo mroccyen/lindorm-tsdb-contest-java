@@ -1,19 +1,27 @@
 package com.alibaba.lindorm.contest.impl.query;
 
 import com.alibaba.lindorm.contest.impl.common.CommonSetting;
-import com.alibaba.lindorm.contest.impl.compress.DeflaterUtils;
 import com.alibaba.lindorm.contest.impl.file.FileManager;
 import com.alibaba.lindorm.contest.impl.index.Index;
 import com.alibaba.lindorm.contest.impl.index.IndexLoader;
 import com.alibaba.lindorm.contest.impl.schema.SchemaMeta;
 import com.alibaba.lindorm.contest.impl.store.ByteBuffersDataInput;
-import com.alibaba.lindorm.contest.structs.*;
+import com.alibaba.lindorm.contest.structs.ColumnValue;
+import com.alibaba.lindorm.contest.structs.LatestQueryRequest;
+import com.alibaba.lindorm.contest.structs.Row;
+import com.alibaba.lindorm.contest.structs.TimeRangeQueryRequest;
+import com.alibaba.lindorm.contest.structs.Vin;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 
 public class DataQueryHandler {
     private final FileManager fileManager;
@@ -100,8 +108,8 @@ public class DataQueryHandler {
             if (t >= timeLowerBound && t < timeUpperBound) {
                 ByteBuffer tempBuffer = ByteBuffer.allocate((int) size);
                 dataInput.readBytes(tempBuffer, (int) size);
-                byte[] unzipBytes = DeflaterUtils.unzipString(tempBuffer.array());
-                ByteBuffersDataInput tempDataInput = new ByteBuffersDataInput(Collections.singletonList(ByteBuffer.wrap(unzipBytes)));
+                tempBuffer.flip();
+                ByteBuffersDataInput tempDataInput = new ByteBuffersDataInput(Collections.singletonList(ByteBuffer.wrap(tempBuffer.array())));
 
                 Map<String, ColumnValue> columns = getColumns(schemaMeta, tempDataInput, requestedColumns);
 
