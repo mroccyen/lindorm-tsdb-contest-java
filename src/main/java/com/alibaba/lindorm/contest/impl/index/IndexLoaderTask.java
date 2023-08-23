@@ -1,5 +1,6 @@
 package com.alibaba.lindorm.contest.impl.index;
 
+import com.alibaba.lindorm.contest.impl.compress.DeflaterUtils;
 import com.alibaba.lindorm.contest.impl.file.FileManager;
 import com.alibaba.lindorm.contest.impl.store.ByteBuffersDataInput;
 import com.alibaba.lindorm.contest.structs.Vin;
@@ -65,7 +66,9 @@ public class IndexLoaderTask extends Thread {
                         long size = dataInput.readVInt();
                         ByteBuffer tempBuffer = ByteBuffer.allocate((int) size);
                         dataInput.readBytes(tempBuffer, (int) size);
-                        index.setBuffer(ByteBuffer.wrap(tempBuffer.array()));
+                        tempBuffer.flip();
+                        byte[] bytes = DeflaterUtils.unzipString(tempBuffer.array());
+                        index.setBuffer(ByteBuffer.wrap(bytes));
 
                         IndexLoader.offerLatestIndex(notice.getTableName(), new Vin(notice.getVin()), index);
                         sizeByteBuffer.clear();

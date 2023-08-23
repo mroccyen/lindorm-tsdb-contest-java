@@ -110,7 +110,8 @@ public class FlushRequestTask extends Thread {
                     totalByte.put(byteBuffersDataOutput.toWriteableBufferList().get(i));
                 }
                 totalByte.flip();
-                byte[] zipBytes = DeflaterUtils.zipString(totalByte.array());
+                byte[] bytes = totalByte.array();
+                byte[] zipBytes = DeflaterUtils.zipString(bytes);
                 ByteBuffersDataOutput tempOutput = new ByteBuffersDataOutput();
                 tempOutput.writeVLong(delta);
                 tempOutput.writeVInt(zipBytes.length);
@@ -123,7 +124,7 @@ public class FlushRequestTask extends Thread {
                 dataWriteFileChanel.write(totalByte);
 
                 //add index
-                index.setBuffer(ByteBuffer.wrap(zipBytes));
+                index.setBuffer(ByteBuffer.wrap(bytes));
                 IndexLoader.offerLatestIndex(tableName, vin, index);
 
                 //释放写文件锁

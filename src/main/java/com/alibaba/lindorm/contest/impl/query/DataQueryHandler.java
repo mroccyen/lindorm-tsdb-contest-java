@@ -71,8 +71,8 @@ public class DataQueryHandler {
             if (latestIndex == null) {
                 continue;
             }
-            byte[] unzipBytes = DeflaterUtils.unzipString(latestIndex.getBuffer().array());
-            ByteBuffersDataInput tempDataInput = new ByteBuffersDataInput(Collections.singletonList(ByteBuffer.wrap(unzipBytes)));
+            byte[] bytes = latestIndex.getBuffer().array();
+            ByteBuffersDataInput tempDataInput = new ByteBuffersDataInput(Collections.singletonList(ByteBuffer.wrap(bytes)));
 
             Map<String, ColumnValue> columns = getColumns(schemaMeta, tempDataInput, requestedColumns);
             //构建Row
