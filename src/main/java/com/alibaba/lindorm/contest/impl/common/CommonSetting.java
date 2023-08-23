@@ -7,5 +7,5 @@ public class CommonSetting {
     /**
      * 2023-07-12 00:00:00
      */
-    public final static long DEFAULT_TIMESTAMP = 1689091200;
+    public final static long DEFAULT_TIMESTAMP = 1689091200000L;
 }

@@ -84,7 +84,7 @@ public class MyEvaluationSample {
             String str = "12345678912345678";
             ArrayList<Row> rowList = new ArrayList<>();
 
-            rowList.add(new Row(new Vin(str.getBytes(StandardCharsets.UTF_8)), 1689091341, columns1));
+            rowList.add(new Row(new Vin(str.getBytes(StandardCharsets.UTF_8)), 1689091341000L, columns1));
             tsdbEngineSample.upsert(new WriteRequest("test", rowList));
 
             //read
@@ -120,11 +120,11 @@ public class MyEvaluationSample {
             columns.put("col3", new ColumnValue.StringColumn(buffer));
             String str1 = "12345678912345678";
             rowList = new ArrayList<>();
-            rowList.add(new Row(new Vin(str1.getBytes(StandardCharsets.UTF_8)), 1689091340, columns));
+            rowList.add(new Row(new Vin(str1.getBytes(StandardCharsets.UTF_8)), 1689091340000L, columns));
             String str2 = "98765432123456789";
-            rowList.add(new Row(new Vin(str2.getBytes(StandardCharsets.UTF_8)), 1689091341, columns));
-            rowList.add(new Row(new Vin(str2.getBytes(StandardCharsets.UTF_8)), 1689091342, columns));
-            rowList.add(new Row(new Vin(str2.getBytes(StandardCharsets.UTF_8)), 1689091343, columns));
+            rowList.add(new Row(new Vin(str2.getBytes(StandardCharsets.UTF_8)), 1689091341000L, columns));
+            rowList.add(new Row(new Vin(str2.getBytes(StandardCharsets.UTF_8)), 1689091342000L, columns));
+            rowList.add(new Row(new Vin(str2.getBytes(StandardCharsets.UTF_8)), 1689091343000L, columns));
 
             ArrayList<Vin> vinList3 = new ArrayList<>();
             vinList3.add(new Vin(str1.getBytes(StandardCharsets.UTF_8)));
@@ -134,7 +134,7 @@ public class MyEvaluationSample {
             tsdbEngineSample.upsert(new WriteRequest("test", rowList));
             ArrayList<Row> resultSet3 = tsdbEngineSample.executeLatestQuery(new LatestQueryRequest("test", vinList3, requestedColumns3));
             showResult(resultSet3);
-            resultSet3 = tsdbEngineSample.executeTimeRangeQuery(new TimeRangeQueryRequest("test", new Vin(str2.getBytes(StandardCharsets.UTF_8)), requestedColumns3, 1689091341, 1689091343));
+            resultSet3 = tsdbEngineSample.executeTimeRangeQuery(new TimeRangeQueryRequest("test", new Vin(str2.getBytes(StandardCharsets.UTF_8)), requestedColumns3, 1689091341000L, 1689091343000L));
             showResult(resultSet3);
 
             tsdbEngineSample.shutdown();
