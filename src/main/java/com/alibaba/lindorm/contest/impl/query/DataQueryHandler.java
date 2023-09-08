@@ -122,7 +122,6 @@ public class DataQueryHandler {
 
         SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
         ArrayList<Row> rowList = new ArrayList<>();
-        Map<Vin, ArrayList<Row>> timeRangeRowMap = new HashMap<>();
 
         FileChannel fileChannel = fileManager.getReadFileChannel(tableName, vin);
         if (fileChannel == null || fileChannel.size() == 0) {
@@ -142,21 +141,10 @@ public class DataQueryHandler {
                 ByteBuffersDataInput tempDataInput = new ByteBuffersDataInput(Collections.singletonList(ByteBuffer.wrap(tempBuffer.array())));
 
                 Map<String, ColumnValue> columns = getColumns(schemaMeta, tempDataInput, requestedColumns);
-
-                ArrayList<Row> rows = timeRangeRowMap.get(vin);
-                if (rows == null) {
-                    rows = new ArrayList<>();
-                }
                 Row row = new Row(vin, t, columns);
-                rows.add(row);
-                timeRangeRowMap.put(vin, rows);
+                rowList.add(row);
             } else {
                 dataInput.seek(position);
-            }
-        }
-        if (timeLowerBound != -1 && timeUpperBound != -1) {
-            for (Map.Entry<Vin, ArrayList<Row>> e : timeRangeRowMap.entrySet()) {
-                rowList.addAll(e.getValue());
             }
         }
         return rowList;
