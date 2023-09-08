@@ -179,10 +179,10 @@ public class DataQueryHandler {
         SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
         Aggregator aggregator = trReadReq.getAggregator();
         ColumnValue.ColumnType columnType = getColumnType(schemaMeta, columnName);
-        int maxInt = 0;
+        int maxInt = Integer.MIN_VALUE;
         int totalInt = 0;
         int totalCountInt = 0;
-        double maxDouble = 0;
+        double maxDouble = Double.MIN_VALUE;
         double totalDouble = 0;
         int totalCountDouble = 0;
         MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
@@ -203,7 +203,7 @@ public class DataQueryHandler {
                     int integerValue = columnValue.getIntegerValue();
                     totalInt += integerValue;
                     totalCountInt++;
-                    if (maxInt > integerValue) {
+                    if (integerValue > maxInt) {
                         maxInt = integerValue;
                     }
                 }
@@ -211,7 +211,7 @@ public class DataQueryHandler {
                     double doubleFloatValue = columnValue.getDoubleFloatValue();
                     totalDouble += doubleFloatValue;
                     totalCountDouble++;
-                    if (maxDouble > doubleFloatValue) {
+                    if (doubleFloatValue > maxDouble) {
                         maxDouble = doubleFloatValue;
                     }
                 }
@@ -285,6 +285,7 @@ public class DataQueryHandler {
         ColumnValue.ColumnType columnType = getColumnType(schemaMeta, columnName);
         MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
         ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
+        boolean notEmpty = false;
         while (dataInput.position() < dataInput.size()) {
             long delta = dataInput.readVLong();
             long t = CommonSetting.DEFAULT_TIMESTAMP + delta;
@@ -302,6 +303,7 @@ public class DataQueryHandler {
                 Map<String, ColumnValue> columns = getColumns(schemaMeta, tempDataInput, Collections.singleton(columnName));
                 ColumnValue columnValue = columns.get(columnName);
                 if (columnFilter.doCompare(columnValue)) {
+                    notEmpty = true;
                     if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_INTEGER)) {
                         int integerValue = columnValue.getIntegerValue();
                         int totalInt = intervalInfo.getTotalInt();
@@ -311,7 +313,7 @@ public class DataQueryHandler {
                         totalCountInt++;
                         intervalInfo.setTotalCountInt(totalCountInt);
                         int maxInt = intervalInfo.getMaxInt();
-                        if (maxInt > integerValue) {
+                        if (integerValue > maxInt) {
                             maxInt = integerValue;
                             intervalInfo.setMaxInt(maxInt);
                         }
@@ -325,7 +327,7 @@ public class DataQueryHandler {
                         totalCountDouble++;
                         intervalInfo.setTotalCountDouble(totalCountDouble);
                         double maxDouble = intervalInfo.getMaxDouble();
-                        if (maxDouble > doubleFloatValue) {
+                        if (doubleFloatValue > maxDouble) {
                             maxDouble = doubleFloatValue;
                             intervalInfo.setMaxDouble(maxDouble);
                         }
@@ -336,18 +338,24 @@ public class DataQueryHandler {
             }
         }
         ArrayList<Row> rowList = new ArrayList<>();
+        if (!notEmpty) {
+            return new ArrayList<>();
+        }
         for (IntervalInfo intervalInfo : intervalInfoList) {
             if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_INTEGER)) {
                 if (aggregator.equals(Aggregator.MAX)) {
+                    int maxInt = intervalInfo.getMaxInt();
                     Map<String, ColumnValue> columns = new HashMap<>();
-                    columns.put(columnName, new ColumnValue.IntegerColumn(intervalInfo.getMaxInt()));
+                    columns.put(columnName, new ColumnValue.IntegerColumn(maxInt == Integer.MIN_VALUE ? CommonSetting.INT_NAN : maxInt));
                     Row row = new Row(vin, intervalInfo.getTimeLowerBound(), columns);
                     rowList.add(row);
                 }
                 if (aggregator.equals(Aggregator.AVG)) {
-                    int avg = 0;
+                    int avg;
                     if (intervalInfo.getTotalCountInt() != 0) {
                         avg = intervalInfo.getTotalInt() / intervalInfo.getTotalCountInt();
+                    } else {
+                        avg = CommonSetting.INT_NAN;
                     }
                     Map<String, ColumnValue> columns = new HashMap<>();
                     columns.put(columnName, new ColumnValue.IntegerColumn(avg));
@@ -358,14 +366,17 @@ public class DataQueryHandler {
             if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_DOUBLE_FLOAT)) {
                 if (aggregator.equals(Aggregator.MAX)) {
                     Map<String, ColumnValue> columns = new HashMap<>();
-                    columns.put(columnName, new ColumnValue.DoubleFloatColumn(intervalInfo.getMaxDouble()));
+                    double maxDouble = intervalInfo.getMaxDouble();
+                    columns.put(columnName, new ColumnValue.DoubleFloatColumn(maxDouble == Double.MIN_VALUE ? CommonSetting.DOUBLE_NAN : maxDouble));
                     Row row = new Row(vin, intervalInfo.getTimeLowerBound(), columns);
                     rowList.add(row);
                 }
                 if (aggregator.equals(Aggregator.AVG)) {
-                    double avg = 0;
+                    double avg;
                     if (intervalInfo.getTotalCountDouble() != 0) {
                         avg = intervalInfo.getTotalDouble() / intervalInfo.getTotalCountDouble();
+                    } else {
+                        avg = CommonSetting.DOUBLE_NAN;
                     }
                     Map<String, ColumnValue> columns = new HashMap<>();
                     columns.put(columnName, new ColumnValue.DoubleFloatColumn(avg));

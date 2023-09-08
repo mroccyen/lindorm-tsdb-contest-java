@@ -3,10 +3,10 @@ package com.alibaba.lindorm.contest.impl.query;
 public class IntervalInfo {
     private long timeLowerBound;
     private long timeUpperBound;
-    private int maxInt = 0;
+    private int maxInt = Integer.MIN_VALUE;
     private int totalInt = 0;
     private int totalCountInt = 0;
-    private double maxDouble = 0;
+    private double maxDouble = Double.MIN_VALUE;
     private double totalDouble = 0;
     private int totalCountDouble = 0;
 
