@@ -9,6 +9,8 @@ import com.alibaba.lindorm.contest.impl.store.ByteBuffersDataInput;
 import com.alibaba.lindorm.contest.structs.ColumnValue;
 import com.alibaba.lindorm.contest.structs.LatestQueryRequest;
 import com.alibaba.lindorm.contest.structs.Row;
+import com.alibaba.lindorm.contest.structs.TimeRangeAggregationRequest;
+import com.alibaba.lindorm.contest.structs.TimeRangeDownsampleRequest;
 import com.alibaba.lindorm.contest.structs.TimeRangeQueryRequest;
 import com.alibaba.lindorm.contest.structs.Vin;
 
@@ -31,15 +33,13 @@ public class DataQueryHandler {
     }
 
     public ArrayList<Row> executeLatestQuery(LatestQueryRequest pReadReq) throws IOException {
-        String tableName = pReadReq.getTableName();
         Collection<Vin> vinList = pReadReq.getVins();
         if (vinList == null || vinList.size() == 0) {
             return new ArrayList<>();
         }
-        Set<String> requestedColumns = pReadReq.getRequestedColumns();
         ArrayList<Row> result;
         try {
-            result = executeLatestQuery(tableName, vinList, requestedColumns);
+            result = doExecuteLatestQuery(pReadReq);
         } catch (Exception ex) {
             System.out.println(">>> executeLatestQuery happen exception: " + ex.getClass().getName());
             for (StackTraceElement stackTraceElement : ex.getStackTrace()) {
@@ -51,15 +51,13 @@ public class DataQueryHandler {
     }
 
     public ArrayList<Row> executeTimeRangeQuery(TimeRangeQueryRequest trReadReq) throws IOException {
-        String tableName = trReadReq.getTableName();
         Vin vin = trReadReq.getVin();
         if (vin == null) {
             return new ArrayList<>();
         }
-        Set<String> requestedColumns = trReadReq.getRequestedColumns();
         ArrayList<Row> result;
         try {
-            result = executeTimeRangeQuery(tableName, vin, requestedColumns, trReadReq.getTimeLowerBound(), trReadReq.getTimeUpperBound());
+            result = doExecuteTimeRangeQuery(trReadReq);
         } catch (Exception ex) {
             System.out.println(">>> executeTimeRangeQuery happen exception: " + ex.getClass().getName());
             for (StackTraceElement stackTraceElement : ex.getStackTrace()) {
@@ -70,7 +68,18 @@ public class DataQueryHandler {
         return result;
     }
 
-    private ArrayList<Row> executeLatestQuery(String tableName, Collection<Vin> vinList, Set<String> requestedColumns) throws IOException {
+    public ArrayList<Row> executeAggregateQuery(TimeRangeAggregationRequest aggregationReq) throws IOException {
+        return new ArrayList<>();
+    }
+
+    public ArrayList<Row> executeDownsampleQuery(TimeRangeDownsampleRequest downsampleReq) throws IOException {
+        return new ArrayList<>();
+    }
+
+    private ArrayList<Row> doExecuteLatestQuery(LatestQueryRequest pReadReq) throws IOException {
+        String tableName = pReadReq.getTableName();
+        Collection<Vin> vinList = pReadReq.getVins();
+        Set<String> requestedColumns = pReadReq.getRequestedColumns();
         SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
 
         Map<Vin, Row> latestRowMap = new HashMap<>();
@@ -89,7 +98,13 @@ public class DataQueryHandler {
         return new ArrayList<>(latestRowMap.values());
     }
 
-    private ArrayList<Row> executeTimeRangeQuery(String tableName, Vin vin, Set<String> requestedColumns, long timeLowerBound, long timeUpperBound) throws IOException {
+    private ArrayList<Row> doExecuteTimeRangeQuery(TimeRangeQueryRequest trReadReq) throws IOException {
+        String tableName = trReadReq.getTableName();
+        Vin vin = trReadReq.getVin();
+        Set<String> requestedColumns = trReadReq.getRequestedColumns();
+        long timeLowerBound = trReadReq.getTimeLowerBound();
+        long timeUpperBound = trReadReq.getTimeUpperBound();
+
         SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
         ArrayList<Row> rowList = new ArrayList<>();
         Map<Vin, ArrayList<Row>> timeRangeRowMap = new HashMap<>();

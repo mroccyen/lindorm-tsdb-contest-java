@@ -41,7 +41,7 @@ public class TSDBEngineImpl extends TSDBEngine {
 
     @Override
     public void connect() throws IOException {
-//初始化文件管理
+        //初始化文件管理
         fileManager = new FileManager(getDataPath());
         fileManager.loadExistFile();
         latestIndexFlush = new LatestIndexFlush(fileManager);
@@ -108,11 +108,11 @@ public class TSDBEngineImpl extends TSDBEngine {
 
     @Override
     public ArrayList<Row> executeAggregateQuery(TimeRangeAggregationRequest aggregationReq) throws IOException {
-        return new ArrayList<>();
+        return dataQueryHandler.executeAggregateQuery(aggregationReq);
     }
 
     @Override
     public ArrayList<Row> executeDownsampleQuery(TimeRangeDownsampleRequest downsampleReq) throws IOException {
-        return new ArrayList<>();
+        return dataQueryHandler.executeDownsampleQuery(downsampleReq);
     }
 }
