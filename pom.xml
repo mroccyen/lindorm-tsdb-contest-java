@@ -31,4 +31,15 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+    <dependencies>
+        <!-- https://mvnrepository.com/artifact/com.github.luben/zstd-jni -->
+        <dependency>
+            <groupId>com.github.luben</groupId>
+            <artifactId>zstd-jni</artifactId>
+            <version>1.5.5-5</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/thirdlibs/zstd-jni-1.5.5-5.jar</systemPath>
+        </dependency>
+    </dependencies>
+
 </project>
