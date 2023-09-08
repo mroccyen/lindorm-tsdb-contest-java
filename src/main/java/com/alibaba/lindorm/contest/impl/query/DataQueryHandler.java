@@ -8,6 +8,7 @@ import com.alibaba.lindorm.contest.impl.schema.SchemaMeta;
 import com.alibaba.lindorm.contest.impl.store.ByteBuffersDataInput;
 import com.alibaba.lindorm.contest.structs.Aggregator;
 import com.alibaba.lindorm.contest.structs.ColumnValue;
+import com.alibaba.lindorm.contest.structs.CompareExpression;
 import com.alibaba.lindorm.contest.structs.LatestQueryRequest;
 import com.alibaba.lindorm.contest.structs.Row;
 import com.alibaba.lindorm.contest.structs.TimeRangeAggregationRequest;
@@ -88,7 +89,21 @@ public class DataQueryHandler {
     }
 
     public ArrayList<Row> executeDownsampleQuery(TimeRangeDownsampleRequest downsampleReq) throws IOException {
-        return new ArrayList<>();
+        Vin vin = downsampleReq.getVin();
+        if (vin == null) {
+            return new ArrayList<>();
+        }
+        ArrayList<Row> result;
+        try {
+            result = doExecuteDownsampleQuery(downsampleReq);
+        } catch (Exception ex) {
+            System.out.println(">>> executeDownsampleQuery happen exception: " + ex.getClass().getName());
+            for (StackTraceElement stackTraceElement : ex.getStackTrace()) {
+                System.out.println(">>> executeDownsampleQuery happen exception: " + stackTraceElement.toString());
+            }
+            throw new IOException(ex);
+        }
+        return result;
     }
 
     private ArrayList<Row> doExecuteLatestQuery(LatestQueryRequest pReadReq) throws IOException {
@@ -244,6 +259,124 @@ public class DataQueryHandler {
         return rowList;
     }
 
+    private ArrayList<Row> doExecuteDownsampleQuery(TimeRangeDownsampleRequest trReadReq) throws IOException {
+        String tableName = trReadReq.getTableName();
+        Vin vin = trReadReq.getVin();
+        FileChannel fileChannel = fileManager.getReadFileChannel(tableName, vin);
+        if (fileChannel == null || fileChannel.size() == 0) {
+            return new ArrayList<>();
+        }
+        String columnName = trReadReq.getColumnName();
+        long timeLowerBound = trReadReq.getTimeLowerBound();
+        long timeUpperBound = trReadReq.getTimeUpperBound();
+        long interval = trReadReq.getInterval();
+        CompareExpression columnFilter = trReadReq.getColumnFilter();
+        //分段
+        ArrayList<IntervalInfo> intervalInfoList = new ArrayList<>();
+        for (long i = timeLowerBound; i < timeUpperBound; i += interval) {
+            IntervalInfo intervalInfo = new IntervalInfo();
+            intervalInfo.setTimeLowerBound(i);
+            intervalInfo.setTimeUpperBound(i + interval);
+            intervalInfoList.add(intervalInfo);
+        }
+
+        SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
+        Aggregator aggregator = trReadReq.getAggregator();
+        ColumnValue.ColumnType columnType = getColumnType(schemaMeta, columnName);
+        MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
+        ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
+        while (dataInput.position() < dataInput.size()) {
+            long delta = dataInput.readVLong();
+            long t = CommonSetting.DEFAULT_TIMESTAMP + delta;
+            long size = dataInput.readVLong();
+            long position = dataInput.position() + size;
+            if (t >= timeLowerBound && t < timeUpperBound) {
+                ByteBuffer tempBuffer = ByteBuffer.allocate((int) size);
+                dataInput.readBytes(tempBuffer, (int) size);
+                IntervalInfo intervalInfo = getIntervalInfo(intervalInfoList, t);
+                if (intervalInfo == null) {
+                    continue;
+                }
+                tempBuffer.flip();
+                ByteBuffersDataInput tempDataInput = new ByteBuffersDataInput(Collections.singletonList(ByteBuffer.wrap(tempBuffer.array())));
+                Map<String, ColumnValue> columns = getColumns(schemaMeta, tempDataInput, Collections.singleton(columnName));
+                ColumnValue columnValue = columns.get(columnName);
+                if (columnFilter.doCompare(columnValue)) {
+                    if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_INTEGER)) {
+                        int integerValue = columnValue.getIntegerValue();
+                        int totalInt = intervalInfo.getTotalInt();
+                        totalInt += integerValue;
+                        intervalInfo.setTotalInt(totalInt);
+                        int totalCountInt = intervalInfo.getTotalCountInt();
+                        totalCountInt++;
+                        intervalInfo.setTotalCountInt(totalCountInt);
+                        int maxInt = intervalInfo.getMaxInt();
+                        if (maxInt > integerValue) {
+                            maxInt = integerValue;
+                            intervalInfo.setMaxInt(maxInt);
+                        }
+                    }
+                    if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_DOUBLE_FLOAT)) {
+                        double doubleFloatValue = columnValue.getDoubleFloatValue();
+                        double totalDouble = intervalInfo.getTotalDouble();
+                        totalDouble += doubleFloatValue;
+                        intervalInfo.setTotalDouble(totalDouble);
+                        int totalCountDouble = intervalInfo.getTotalCountDouble();
+                        totalCountDouble++;
+                        intervalInfo.setTotalCountDouble(totalCountDouble);
+                        double maxDouble = intervalInfo.getMaxDouble();
+                        if (maxDouble > doubleFloatValue) {
+                            maxDouble = doubleFloatValue;
+                            intervalInfo.setMaxDouble(maxDouble);
+                        }
+                    }
+                }
+            } else {
+                dataInput.seek(position);
+            }
+        }
+        ArrayList<Row> rowList = new ArrayList<>();
+        for (IntervalInfo intervalInfo : intervalInfoList) {
+            if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_INTEGER)) {
+                if (aggregator.equals(Aggregator.MAX)) {
+                    Map<String, ColumnValue> columns = new HashMap<>();
+                    columns.put(columnName, new ColumnValue.IntegerColumn(intervalInfo.getMaxInt()));
+                    Row row = new Row(vin, intervalInfo.getTimeLowerBound(), columns);
+                    rowList.add(row);
+                }
+                if (aggregator.equals(Aggregator.AVG)) {
+                    int avg = 0;
+                    if (intervalInfo.getTotalCountInt() != 0) {
+                        avg = intervalInfo.getTotalInt() / intervalInfo.getTotalCountInt();
+                    }
+                    Map<String, ColumnValue> columns = new HashMap<>();
+                    columns.put(columnName, new ColumnValue.IntegerColumn(avg));
+                    Row row = new Row(vin, intervalInfo.getTimeLowerBound(), columns);
+                    rowList.add(row);
+                }
+            }
+            if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_DOUBLE_FLOAT)) {
+                if (aggregator.equals(Aggregator.MAX)) {
+                    Map<String, ColumnValue> columns = new HashMap<>();
+                    columns.put(columnName, new ColumnValue.DoubleFloatColumn(intervalInfo.getMaxDouble()));
+                    Row row = new Row(vin, intervalInfo.getTimeLowerBound(), columns);
+                    rowList.add(row);
+                }
+                if (aggregator.equals(Aggregator.AVG)) {
+                    double avg = 0;
+                    if (intervalInfo.getTotalCountDouble() != 0) {
+                        avg = intervalInfo.getTotalDouble() / intervalInfo.getTotalCountDouble();
+                    }
+                    Map<String, ColumnValue> columns = new HashMap<>();
+                    columns.put(columnName, new ColumnValue.DoubleFloatColumn(avg));
+                    Row row = new Row(vin, intervalInfo.getTimeLowerBound(), columns);
+                    rowList.add(row);
+                }
+            }
+        }
+        return rowList;
+    }
+
     private Map<String, ColumnValue> getColumns(SchemaMeta schemaMeta, ByteBuffersDataInput tempDataInput, Set<String> requestedColumns) throws IOException {
         Map<String, ColumnValue> columns = new HashMap<>();
         ArrayList<String> integerColumnsNameList = schemaMeta.getIntegerColumnsName();
@@ -287,5 +420,14 @@ public class DataQueryHandler {
             return ColumnValue.ColumnType.COLUMN_TYPE_STRING;
         }
         throw new RuntimeException("column type error");
+    }
+
+    private IntervalInfo getIntervalInfo(ArrayList<IntervalInfo> intervalInfoList, long timestamp) {
+        for (IntervalInfo intervalInfo : intervalInfoList) {
+            if (timestamp >= intervalInfo.getTimeLowerBound() && timestamp < intervalInfo.getTimeUpperBound()) {
+                return intervalInfo;
+            }
+        }
+        return null;
     }
 }
