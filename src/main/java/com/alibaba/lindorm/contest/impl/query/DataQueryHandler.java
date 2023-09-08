@@ -6,6 +6,7 @@ import com.alibaba.lindorm.contest.impl.index.Index;
 import com.alibaba.lindorm.contest.impl.index.IndexLoader;
 import com.alibaba.lindorm.contest.impl.schema.SchemaMeta;
 import com.alibaba.lindorm.contest.impl.store.ByteBuffersDataInput;
+import com.alibaba.lindorm.contest.structs.Aggregator;
 import com.alibaba.lindorm.contest.structs.ColumnValue;
 import com.alibaba.lindorm.contest.structs.LatestQueryRequest;
 import com.alibaba.lindorm.contest.structs.Row;
@@ -69,7 +70,21 @@ public class DataQueryHandler {
     }
 
     public ArrayList<Row> executeAggregateQuery(TimeRangeAggregationRequest aggregationReq) throws IOException {
-        return new ArrayList<>();
+        Vin vin = aggregationReq.getVin();
+        if (vin == null) {
+            return new ArrayList<>();
+        }
+        ArrayList<Row> result;
+        try {
+            result = doExecuteAggregateQuery(aggregationReq);
+        } catch (Exception ex) {
+            System.out.println(">>> executeAggregateQuery happen exception: " + ex.getClass().getName());
+            for (StackTraceElement stackTraceElement : ex.getStackTrace()) {
+                System.out.println(">>> executeAggregateQuery happen exception: " + stackTraceElement.toString());
+            }
+            throw new IOException(ex);
+        }
+        return result;
     }
 
     public ArrayList<Row> executeDownsampleQuery(TimeRangeDownsampleRequest downsampleReq) throws IOException {
@@ -147,6 +162,100 @@ public class DataQueryHandler {
         return rowList;
     }
 
+    private ArrayList<Row> doExecuteAggregateQuery(TimeRangeAggregationRequest trReadReq) throws IOException {
+        String tableName = trReadReq.getTableName();
+        Vin vin = trReadReq.getVin();
+        String columnName = trReadReq.getColumnName();
+        long timeLowerBound = trReadReq.getTimeLowerBound();
+        long timeUpperBound = trReadReq.getTimeUpperBound();
+
+        FileChannel fileChannel = fileManager.getReadFileChannel(tableName, vin);
+        if (fileChannel == null || fileChannel.size() == 0) {
+            return new ArrayList<>();
+        }
+        SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
+        Aggregator aggregator = trReadReq.getAggregator();
+        ColumnValue.ColumnType columnType = getColumnType(schemaMeta, columnName);
+        int maxInt = 0;
+        int totalInt = 0;
+        int totalCountInt = 0;
+        double maxDouble = 0;
+        double totalDouble = 0;
+        int totalCountDouble = 0;
+        MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
+        ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
+        while (dataInput.position() < dataInput.size()) {
+            long delta = dataInput.readVLong();
+            long t = CommonSetting.DEFAULT_TIMESTAMP + delta;
+            long size = dataInput.readVLong();
+            long position = dataInput.position() + size;
+            if (t >= timeLowerBound && t < timeUpperBound) {
+                ByteBuffer tempBuffer = ByteBuffer.allocate((int) size);
+                dataInput.readBytes(tempBuffer, (int) size);
+                tempBuffer.flip();
+                ByteBuffersDataInput tempDataInput = new ByteBuffersDataInput(Collections.singletonList(ByteBuffer.wrap(tempBuffer.array())));
+                Map<String, ColumnValue> columns = getColumns(schemaMeta, tempDataInput, Collections.singleton(columnName));
+                ColumnValue columnValue = columns.get(columnName);
+                if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_INTEGER)) {
+                    int integerValue = columnValue.getIntegerValue();
+                    totalInt += integerValue;
+                    totalCountInt++;
+                    if (maxInt > integerValue) {
+                        maxInt = integerValue;
+                    }
+                }
+                if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_DOUBLE_FLOAT)) {
+                    double doubleFloatValue = columnValue.getDoubleFloatValue();
+                    totalDouble += doubleFloatValue;
+                    totalCountDouble++;
+                    if (maxDouble > doubleFloatValue) {
+                        maxDouble = doubleFloatValue;
+                    }
+                }
+            } else {
+                dataInput.seek(position);
+            }
+        }
+        ArrayList<Row> rowList = new ArrayList<>();
+        if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_INTEGER)) {
+            if (aggregator.equals(Aggregator.MAX)) {
+                Map<String, ColumnValue> columns = new HashMap<>();
+                columns.put(columnName, new ColumnValue.IntegerColumn(maxInt));
+                Row row = new Row(vin, timeLowerBound, columns);
+                rowList.add(row);
+            }
+            if (aggregator.equals(Aggregator.AVG)) {
+                int avg = 0;
+                if (totalCountInt != 0) {
+                    avg = totalInt / totalCountInt;
+                }
+                Map<String, ColumnValue> columns = new HashMap<>();
+                columns.put(columnName, new ColumnValue.IntegerColumn(avg));
+                Row row = new Row(vin, timeLowerBound, columns);
+                rowList.add(row);
+            }
+        }
+        if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_DOUBLE_FLOAT)) {
+            if (aggregator.equals(Aggregator.MAX)) {
+                Map<String, ColumnValue> columns = new HashMap<>();
+                columns.put(columnName, new ColumnValue.DoubleFloatColumn(maxDouble));
+                Row row = new Row(vin, timeLowerBound, columns);
+                rowList.add(row);
+            }
+            if (aggregator.equals(Aggregator.AVG)) {
+                double avg = 0;
+                if (totalCountDouble != 0) {
+                    avg = totalDouble / totalCountDouble;
+                }
+                Map<String, ColumnValue> columns = new HashMap<>();
+                columns.put(columnName, new ColumnValue.DoubleFloatColumn(avg));
+                Row row = new Row(vin, timeLowerBound, columns);
+                rowList.add(row);
+            }
+        }
+        return rowList;
+    }
+
     private Map<String, ColumnValue> getColumns(SchemaMeta schemaMeta, ByteBuffersDataInput tempDataInput, Set<String> requestedColumns) throws IOException {
         Map<String, ColumnValue> columns = new HashMap<>();
         ArrayList<String> integerColumnsNameList = schemaMeta.getIntegerColumnsName();
@@ -174,5 +283,21 @@ public class DataQueryHandler {
             }
         }
         return columns;
+    }
+
+    private ColumnValue.ColumnType getColumnType(SchemaMeta schemaMeta, String columnName) {
+        ArrayList<String> integerColumnsNameList = schemaMeta.getIntegerColumnsName();
+        if (integerColumnsNameList.contains(columnName)) {
+            return ColumnValue.ColumnType.COLUMN_TYPE_INTEGER;
+        }
+        ArrayList<String> doubleColumnsNameList = schemaMeta.getDoubleColumnsName();
+        if (doubleColumnsNameList.contains(columnName)) {
+            return ColumnValue.ColumnType.COLUMN_TYPE_DOUBLE_FLOAT;
+        }
+        ArrayList<String> stringColumnsNameList = schemaMeta.getStringColumnsName();
+        if (stringColumnsNameList.contains(columnName)) {
+            return ColumnValue.ColumnType.COLUMN_TYPE_STRING;
+        }
+        throw new RuntimeException("column type error");
     }
 }
