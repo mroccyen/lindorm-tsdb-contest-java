@@ -164,13 +164,13 @@ public class MyEvaluationSample {
 
             System.out.println("TimeRangeAggregationRequest-------------------------------------------------------------------------------------------------------------------");
             resultSet3 = tsdbEngineSample.executeAggregateQuery(new TimeRangeAggregationRequest(tableName, new Vin(vinName.getBytes(StandardCharsets.UTF_8)), col1,
-                1689091341056L, 1689091347056L, Aggregator.MAX));
+                1689091341056L, 1689091347056L, Aggregator.AVG));
             showResult(resultSet3);
             System.out.println("TimeRangeAggregationRequest-------------------------------------------------------------------------------------------------------------------");
 
             System.out.println("TimeRangeDownsampleRequest-------------------------------------------------------------------------------------------------------------------");
             resultSet3 = tsdbEngineSample.executeDownsampleQuery(new TimeRangeDownsampleRequest(tableName, new Vin(vinName.getBytes(StandardCharsets.UTF_8)), col1,
-                1689091341056L, 1689091347056L, Aggregator.MAX, 2000L, new CompareExpression(new ColumnValue.IntegerColumn(2), CompareExpression.CompareOp.GREATER)));
+                1689091341056L, 1689091347056L, Aggregator.AVG, 2000L, new CompareExpression(new ColumnValue.IntegerColumn(2), CompareExpression.CompareOp.GREATER)));
             showResult(resultSet3);
             System.out.println("TimeRangeDownsampleRequest-------------------------------------------------------------------------------------------------------------------");
 

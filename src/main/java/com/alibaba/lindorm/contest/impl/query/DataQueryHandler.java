@@ -228,12 +228,12 @@ public class DataQueryHandler {
                 rowList.add(row);
             }
             if (aggregator.equals(Aggregator.AVG)) {
-                int avg = 0;
+                double avg = 0;
                 if (totalCountInt != 0) {
-                    avg = totalInt / totalCountInt;
+                    avg = (double) totalInt / totalCountInt;
                 }
                 Map<String, ColumnValue> columns = new HashMap<>();
-                columns.put(columnName, new ColumnValue.IntegerColumn(avg));
+                columns.put(columnName, new ColumnValue.DoubleFloatColumn(avg));
                 Row row = new Row(vin, timeLowerBound, columns);
                 rowList.add(row);
             }
@@ -351,14 +351,14 @@ public class DataQueryHandler {
                     rowList.add(row);
                 }
                 if (aggregator.equals(Aggregator.AVG)) {
-                    int avg;
+                    double avg;
                     if (intervalInfo.getTotalCountInt() != 0) {
-                        avg = intervalInfo.getTotalInt() / intervalInfo.getTotalCountInt();
+                        avg = (double) intervalInfo.getTotalInt() / intervalInfo.getTotalCountInt();
                     } else {
                         avg = CommonSetting.INT_NAN;
                     }
                     Map<String, ColumnValue> columns = new HashMap<>();
-                    columns.put(columnName, new ColumnValue.IntegerColumn(avg));
+                    columns.put(columnName, new ColumnValue.DoubleFloatColumn(avg));
                     Row row = new Row(vin, intervalInfo.getTimeLowerBound(), columns);
                     rowList.add(row);
                 }
