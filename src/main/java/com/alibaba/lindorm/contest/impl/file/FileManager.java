@@ -1,14 +1,13 @@
 package com.alibaba.lindorm.contest.impl.file;
 
-import com.alibaba.lindorm.contest.impl.schema.SchemaMeta;
 import com.alibaba.lindorm.contest.impl.common.CommonSetting;
+import com.alibaba.lindorm.contest.impl.schema.SchemaMeta;
 import com.alibaba.lindorm.contest.structs.Vin;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.*;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -99,10 +98,6 @@ public class FileManager {
         }
 
         FileChannel writeFileChannel = FileChannel.open(f.toPath(), APPEND);
-        //插入最新值的偏移量
-        ByteBuffer buffer = ByteBuffer.allocate(8);
-        buffer.putLong(8);
-        writeFileChannel.write(buffer);
         Map<Vin, FileChannel> wtireMap = writeFileMap.get(tableName);
         if (wtireMap != null) {
             wtireMap.put(vin, writeFileChannel);
