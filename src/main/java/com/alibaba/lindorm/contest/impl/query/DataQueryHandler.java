@@ -292,18 +292,19 @@ public class DataQueryHandler {
             long size = dataInput.readVLong();
             long position = dataInput.position() + size;
             if (t >= timeLowerBound && t < timeUpperBound) {
+                notEmpty = true;
                 ByteBuffer tempBuffer = ByteBuffer.allocate((int) size);
                 dataInput.readBytes(tempBuffer, (int) size);
                 IntervalInfo intervalInfo = getIntervalInfo(intervalInfoList, t);
                 if (intervalInfo == null) {
                     continue;
                 }
+                intervalInfo.setHasScanDate(true);
                 tempBuffer.flip();
                 ByteBuffersDataInput tempDataInput = new ByteBuffersDataInput(Collections.singletonList(ByteBuffer.wrap(tempBuffer.array())));
                 Map<String, ColumnValue> columns = getColumns(schemaMeta, tempDataInput, Collections.singleton(columnName));
                 ColumnValue columnValue = columns.get(columnName);
                 if (columnFilter.doCompare(columnValue)) {
-                    notEmpty = true;
                     if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_INTEGER)) {
                         int integerValue = columnValue.getIntegerValue();
                         int totalInt = intervalInfo.getTotalInt();
@@ -343,6 +344,14 @@ public class DataQueryHandler {
         }
         for (IntervalInfo intervalInfo : intervalInfoList) {
             if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_INTEGER)) {
+                //没有扫描到任何值
+                if (!intervalInfo.isHasScanDate()) {
+                    Map<String, ColumnValue> columns = new HashMap<>();
+                    columns.put(columnName, new ColumnValue.DoubleFloatColumn(CommonSetting.DOUBLE_NAN));
+                    Row row = new Row(vin, intervalInfo.getTimeLowerBound(), columns);
+                    rowList.add(row);
+                    continue;
+                }
                 if (aggregator.equals(Aggregator.MAX)) {
                     int maxInt = intervalInfo.getMaxInt();
                     Map<String, ColumnValue> columns = new HashMap<>();
@@ -364,6 +373,14 @@ public class DataQueryHandler {
                 }
             }
             if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_DOUBLE_FLOAT)) {
+                //没有扫描到任何值
+                if (!intervalInfo.isHasScanDate()) {
+                    Map<String, ColumnValue> columns = new HashMap<>();
+                    columns.put(columnName, new ColumnValue.DoubleFloatColumn(CommonSetting.DOUBLE_NAN));
+                    Row row = new Row(vin, intervalInfo.getTimeLowerBound(), columns);
+                    rowList.add(row);
+                    continue;
+                }
                 if (aggregator.equals(Aggregator.MAX)) {
                     Map<String, ColumnValue> columns = new HashMap<>();
                     double maxDouble = intervalInfo.getMaxDouble();

@@ -1,6 +1,7 @@
 package com.alibaba.lindorm.contest.impl.query;
 
 public class IntervalInfo {
+    private boolean hasScanDate = false;
     private long timeLowerBound;
     private long timeUpperBound;
     private int maxInt = Integer.MIN_VALUE;
@@ -9,6 +10,14 @@ public class IntervalInfo {
     private double maxDouble = Double.MIN_VALUE;
     private double totalDouble = 0;
     private int totalCountDouble = 0;
+
+    public boolean isHasScanDate() {
+        return hasScanDate;
+    }
+
+    public void setHasScanDate(boolean hasScanDate) {
+        this.hasScanDate = hasScanDate;
+    }
 
     public long getTimeLowerBound() {
         return timeLowerBound;
