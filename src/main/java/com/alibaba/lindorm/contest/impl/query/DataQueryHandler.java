@@ -182,7 +182,7 @@ public class DataQueryHandler {
         int maxInt = Integer.MIN_VALUE;
         int totalInt = 0;
         int totalCountInt = 0;
-        double maxDouble = Double.MIN_VALUE;
+        double maxDouble = -Double.MAX_VALUE;
         double totalDouble = 0;
         int totalCountDouble = 0;
         MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());

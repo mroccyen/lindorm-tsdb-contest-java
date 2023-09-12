@@ -7,7 +7,7 @@ public class IntervalInfo {
     private int maxInt = Integer.MIN_VALUE;
     private int totalInt = 0;
     private int totalCountInt = 0;
-    private double maxDouble = Double.MIN_VALUE;
+    private double maxDouble = -Double.MAX_VALUE;
     private double totalDouble = 0;
     private int totalCountDouble = 0;
 
