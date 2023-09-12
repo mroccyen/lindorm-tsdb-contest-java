@@ -364,7 +364,7 @@ public class DataQueryHandler {
                     if (intervalInfo.getTotalCountInt() != 0) {
                         avg = (double) intervalInfo.getTotalInt() / intervalInfo.getTotalCountInt();
                     } else {
-                        avg = CommonSetting.INT_NAN;
+                        avg = CommonSetting.DOUBLE_NAN;
                     }
                     Map<String, ColumnValue> columns = new HashMap<>();
                     columns.put(columnName, new ColumnValue.DoubleFloatColumn(avg));

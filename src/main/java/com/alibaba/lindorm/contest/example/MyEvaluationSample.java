@@ -163,14 +163,14 @@ public class MyEvaluationSample {
             System.out.println("TimeRangeQueryRequest-------------------------------------------------------------------------------------------------------------------");
 
             System.out.println("TimeRangeAggregationRequest-------------------------------------------------------------------------------------------------------------------");
-            resultSet3 = tsdbEngineSample.executeAggregateQuery(new TimeRangeAggregationRequest(tableName, new Vin(vinName.getBytes(StandardCharsets.UTF_8)), col1,
+            resultSet3 = tsdbEngineSample.executeAggregateQuery(new TimeRangeAggregationRequest(tableName, new Vin(vinName.getBytes(StandardCharsets.UTF_8)), col2,
                 1689091341056L, 1689091347056L, Aggregator.AVG));
             showResult(resultSet3);
             System.out.println("TimeRangeAggregationRequest-------------------------------------------------------------------------------------------------------------------");
 
             System.out.println("TimeRangeDownsampleRequest-------------------------------------------------------------------------------------------------------------------");
-            resultSet3 = tsdbEngineSample.executeDownsampleQuery(new TimeRangeDownsampleRequest(tableName, new Vin(vinName.getBytes(StandardCharsets.UTF_8)), col1,
-                1689091341056L, 1689091347056L, Aggregator.AVG, 2000L, new CompareExpression(new ColumnValue.IntegerColumn(2), CompareExpression.CompareOp.GREATER)));
+            resultSet3 = tsdbEngineSample.executeDownsampleQuery(new TimeRangeDownsampleRequest(tableName, new Vin(vinName.getBytes(StandardCharsets.UTF_8)), col2,
+                1689091341056L, 1689091347056L, Aggregator.AVG, 2000L, new CompareExpression(new ColumnValue.DoubleFloatColumn(9.0), CompareExpression.CompareOp.GREATER)));
             showResult(resultSet3);
             System.out.println("TimeRangeDownsampleRequest-------------------------------------------------------------------------------------------------------------------");
 
