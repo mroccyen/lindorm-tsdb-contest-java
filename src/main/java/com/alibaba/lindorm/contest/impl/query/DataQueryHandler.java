@@ -180,9 +180,11 @@ public class DataQueryHandler {
         Aggregator aggregator = trReadReq.getAggregator();
         ColumnValue.ColumnType columnType = getColumnType(schemaMeta, columnName);
         int maxInt = Integer.MIN_VALUE;
+        boolean hasMaxInt = false;
         int totalInt = 0;
         int totalCountInt = 0;
         double maxDouble = -Double.MAX_VALUE;
+        boolean hasMaxDouble = false;
         double totalDouble = 0;
         int totalCountDouble = 0;
         MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
@@ -206,6 +208,7 @@ public class DataQueryHandler {
                     if (integerValue > maxInt) {
                         maxInt = integerValue;
                     }
+                    hasMaxInt = true;
                 }
                 if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_DOUBLE_FLOAT)) {
                     double doubleFloatValue = columnValue.getDoubleFloatValue();
@@ -214,6 +217,7 @@ public class DataQueryHandler {
                     if (doubleFloatValue > maxDouble) {
                         maxDouble = doubleFloatValue;
                     }
+                    hasMaxDouble = true;
                 }
             } else {
                 dataInput.seek(position);
@@ -222,15 +226,20 @@ public class DataQueryHandler {
         ArrayList<Row> rowList = new ArrayList<>();
         if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_INTEGER)) {
             if (aggregator.equals(Aggregator.MAX)) {
+                if (!hasMaxInt) {
+                    return new ArrayList<>();
+                }
                 Map<String, ColumnValue> columns = new HashMap<>();
                 columns.put(columnName, new ColumnValue.IntegerColumn(maxInt));
                 Row row = new Row(vin, timeLowerBound, columns);
                 rowList.add(row);
             }
             if (aggregator.equals(Aggregator.AVG)) {
-                double avg = 0;
+                double avg;
                 if (totalCountInt != 0) {
                     avg = (double) totalInt / totalCountInt;
+                } else {
+                    return new ArrayList<>();
                 }
                 Map<String, ColumnValue> columns = new HashMap<>();
                 columns.put(columnName, new ColumnValue.DoubleFloatColumn(avg));
@@ -240,15 +249,20 @@ public class DataQueryHandler {
         }
         if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_DOUBLE_FLOAT)) {
             if (aggregator.equals(Aggregator.MAX)) {
+                if (hasMaxDouble) {
+                    return new ArrayList<>();
+                }
                 Map<String, ColumnValue> columns = new HashMap<>();
                 columns.put(columnName, new ColumnValue.DoubleFloatColumn(maxDouble));
                 Row row = new Row(vin, timeLowerBound, columns);
                 rowList.add(row);
             }
             if (aggregator.equals(Aggregator.AVG)) {
-                double avg = 0;
+                double avg;
                 if (totalCountDouble != 0) {
                     avg = totalDouble / totalCountDouble;
+                } else {
+                    return new ArrayList<>();
                 }
                 Map<String, ColumnValue> columns = new HashMap<>();
                 columns.put(columnName, new ColumnValue.DoubleFloatColumn(avg));

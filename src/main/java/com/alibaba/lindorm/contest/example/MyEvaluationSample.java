@@ -88,7 +88,7 @@ public class MyEvaluationSample {
             ArrayList<Row> rowList = new ArrayList<>();
             Map<String, ColumnValue> columns1 = new HashMap<>();
             columns1.put(col1, new ColumnValue.IntegerColumn(12));
-            columns1.put(col2, new ColumnValue.DoubleFloatColumn(1.23));
+            columns1.put(col2, new ColumnValue.DoubleFloatColumn(-1.23));
             columns1.put(col3, new ColumnValue.StringColumn(buffer));
             rowList.add(new Row(new Vin(vinName.getBytes(StandardCharsets.UTF_8)), 1689091341000L, columns1));
 
@@ -100,7 +100,7 @@ public class MyEvaluationSample {
 
             columns1 = new HashMap<>();
             columns1.put(col1, new ColumnValue.IntegerColumn(10));
-            columns1.put(col2, new ColumnValue.DoubleFloatColumn(2.23));
+            columns1.put(col2, new ColumnValue.DoubleFloatColumn(-2.23));
             columns1.put(col3, new ColumnValue.StringColumn(buffer));
             rowList.add(new Row(new Vin(vinName.getBytes(StandardCharsets.UTF_8)), 1689091343000L, columns1));
 
@@ -112,7 +112,7 @@ public class MyEvaluationSample {
 
             columns1 = new HashMap<>();
             columns1.put(col1, new ColumnValue.IntegerColumn(1));
-            columns1.put(col2, new ColumnValue.DoubleFloatColumn(0.23));
+            columns1.put(col2, new ColumnValue.DoubleFloatColumn(-0.23));
             columns1.put(col3, new ColumnValue.StringColumn(buffer));
             rowList.add(new Row(new Vin(vinName.getBytes(StandardCharsets.UTF_8)), 1689091345000L, columns1));
 
@@ -124,7 +124,7 @@ public class MyEvaluationSample {
 
             columns1 = new HashMap<>();
             columns1.put(col1, new ColumnValue.IntegerColumn(22));
-            columns1.put(col2, new ColumnValue.DoubleFloatColumn(1.83));
+            columns1.put(col2, new ColumnValue.DoubleFloatColumn(-1.83));
             columns1.put(col3, new ColumnValue.StringColumn(buffer));
             rowList.add(new Row(new Vin(vinName.getBytes(StandardCharsets.UTF_8)), 1689091347000L, columns1));
 
