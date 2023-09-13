@@ -226,6 +226,18 @@ public class DataQueryHandler {
         }
         ArrayList<Row> rowList = new ArrayList<>();
         if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_INTEGER)) {
+            System.out.println(">>> doExecuteAggregateQuery columnName:" + columnName + ", aggregator:" + aggregator.name() + ", result:{" +
+                "hasMaxInt=" + hasMaxInt +
+                ", hasMaxDouble=" + hasMaxDouble +
+                ", timeLowerBound=" + timeLowerBound +
+                ", timeUpperBound=" + timeUpperBound +
+                ", maxInt=" + maxInt +
+                ", totalInt=" + totalInt +
+                ", totalCountInt=" + totalCountInt +
+                ", maxDouble=" + maxDouble +
+                ", totalDouble=" + totalDouble +
+                ", totalCountDouble=" + totalCountDouble +
+                '}');
             if (aggregator.equals(Aggregator.MAX)) {
                 if (!hasMaxInt) {
                     System.out.println(">>> doExecuteAggregateQuery have not max int");
@@ -365,7 +377,7 @@ public class DataQueryHandler {
             return new ArrayList<>();
         }
         for (IntervalInfo intervalInfo : intervalInfoList) {
-            System.out.println(">>> doExecuteDownsampleQuery columnName: " + columnName + ", intervalInfo: " + intervalInfo.toString());
+            System.out.println(">>> doExecuteDownsampleQuery columnName:" + columnName + ", aggregator:" + aggregator.name() + ", intervalInfo:" + intervalInfo.toString());
             if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_INTEGER)) {
                 //没有扫描到任何值
                 if (!intervalInfo.hasScanData()) {
