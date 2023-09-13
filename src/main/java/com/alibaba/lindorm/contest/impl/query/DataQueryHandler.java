@@ -252,7 +252,7 @@ public class DataQueryHandler {
         }
         if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_DOUBLE_FLOAT)) {
             if (aggregator.equals(Aggregator.MAX)) {
-                if (hasMaxDouble) {
+                if (!hasMaxDouble) {
                     System.out.println(">>> doExecuteAggregateQuery have not max double");
                     return new ArrayList<>();
                 }
