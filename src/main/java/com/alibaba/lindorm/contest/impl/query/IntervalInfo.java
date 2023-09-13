@@ -1,22 +1,42 @@
 package com.alibaba.lindorm.contest.impl.query;
 
+import com.alibaba.lindorm.contest.impl.common.CommonSetting;
+
 public class IntervalInfo {
-    private boolean hasScanDate = false;
+    private boolean hasScanData = false;
+    private boolean hasMaxInt = false;
+    private boolean hasMaxDouble = false;
     private long timeLowerBound;
     private long timeUpperBound;
-    private int maxInt = Integer.MIN_VALUE;
+    private int maxInt = CommonSetting.INT_MIN;
     private int totalInt = 0;
     private int totalCountInt = 0;
-    private double maxDouble = -Double.MAX_VALUE;
+    private double maxDouble = CommonSetting.DOUBLE_MIN;
     private double totalDouble = 0;
     private int totalCountDouble = 0;
 
-    public boolean isHasScanDate() {
-        return hasScanDate;
+    public boolean hasScanData() {
+        return hasScanData;
     }
 
-    public void setHasScanDate(boolean hasScanDate) {
-        this.hasScanDate = hasScanDate;
+    public void setHasScanData(boolean hasScanData) {
+        this.hasScanData = hasScanData;
+    }
+
+    public boolean hasMaxInt() {
+        return hasMaxInt;
+    }
+
+    public void setHasMaxInt(boolean hasMaxInt) {
+        this.hasMaxInt = hasMaxInt;
+    }
+
+    public boolean hasMaxDouble() {
+        return hasMaxDouble;
+    }
+
+    public void setHasMaxDouble(boolean hasMaxDouble) {
+        this.hasMaxDouble = hasMaxDouble;
     }
 
     public long getTimeLowerBound() {

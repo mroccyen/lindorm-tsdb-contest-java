@@ -180,11 +180,11 @@ public class DataQueryHandler {
         SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
         Aggregator aggregator = trReadReq.getAggregator();
         ColumnValue.ColumnType columnType = getColumnType(schemaMeta, columnName);
-        int maxInt = Integer.MIN_VALUE;
+        int maxInt = CommonSetting.INT_MIN;
         boolean hasMaxInt = false;
         int totalInt = 0;
         int totalCountInt = 0;
-        double maxDouble = -Double.MAX_VALUE;
+        double maxDouble = CommonSetting.DOUBLE_MIN;
         boolean hasMaxDouble = false;
         double totalDouble = 0;
         int totalCountDouble = 0;
@@ -319,7 +319,7 @@ public class DataQueryHandler {
                 if (intervalInfo == null) {
                     continue;
                 }
-                intervalInfo.setHasScanDate(true);
+                intervalInfo.setHasScanData(true);
                 tempBuffer.flip();
                 ByteBuffersDataInput tempDataInput = new ByteBuffersDataInput(Collections.singletonList(ByteBuffer.wrap(tempBuffer.array())));
                 Map<String, ColumnValue> columns = getColumns(schemaMeta, tempDataInput, Collections.singleton(columnName));
@@ -337,6 +337,7 @@ public class DataQueryHandler {
                         if (integerValue > maxInt) {
                             maxInt = integerValue;
                             intervalInfo.setMaxInt(maxInt);
+                            intervalInfo.setHasMaxInt(true);
                         }
                     }
                     if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_DOUBLE_FLOAT)) {
@@ -351,6 +352,7 @@ public class DataQueryHandler {
                         if (doubleFloatValue > maxDouble) {
                             maxDouble = doubleFloatValue;
                             intervalInfo.setMaxDouble(maxDouble);
+                            intervalInfo.setHasMaxDouble(true);
                         }
                     }
                 }
@@ -365,9 +367,9 @@ public class DataQueryHandler {
         for (IntervalInfo intervalInfo : intervalInfoList) {
             if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_INTEGER)) {
                 //没有扫描到任何值
-                if (!intervalInfo.isHasScanDate()) {
+                if (!intervalInfo.hasScanData()) {
                     Map<String, ColumnValue> columns = new HashMap<>();
-                    columns.put(columnName, new ColumnValue.DoubleFloatColumn(CommonSetting.DOUBLE_NAN));
+                    columns.put(columnName, new ColumnValue.IntegerColumn(CommonSetting.INT_NAN));
                     Row row = new Row(vin, intervalInfo.getTimeLowerBound(), columns);
                     rowList.add(row);
                     continue;
@@ -375,7 +377,7 @@ public class DataQueryHandler {
                 if (aggregator.equals(Aggregator.MAX)) {
                     int maxInt = intervalInfo.getMaxInt();
                     Map<String, ColumnValue> columns = new HashMap<>();
-                    columns.put(columnName, new ColumnValue.IntegerColumn(maxInt == Integer.MIN_VALUE ? CommonSetting.INT_NAN : maxInt));
+                    columns.put(columnName, new ColumnValue.IntegerColumn(intervalInfo.hasMaxInt() ? maxInt : CommonSetting.INT_NAN));
                     Row row = new Row(vin, intervalInfo.getTimeLowerBound(), columns);
                     rowList.add(row);
                 }
@@ -394,7 +396,7 @@ public class DataQueryHandler {
             }
             if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_DOUBLE_FLOAT)) {
                 //没有扫描到任何值
-                if (!intervalInfo.isHasScanDate()) {
+                if (!intervalInfo.hasScanData()) {
                     Map<String, ColumnValue> columns = new HashMap<>();
                     columns.put(columnName, new ColumnValue.DoubleFloatColumn(CommonSetting.DOUBLE_NAN));
                     Row row = new Row(vin, intervalInfo.getTimeLowerBound(), columns);
@@ -404,7 +406,7 @@ public class DataQueryHandler {
                 if (aggregator.equals(Aggregator.MAX)) {
                     Map<String, ColumnValue> columns = new HashMap<>();
                     double maxDouble = intervalInfo.getMaxDouble();
-                    columns.put(columnName, new ColumnValue.DoubleFloatColumn(maxDouble == Double.MIN_VALUE ? CommonSetting.DOUBLE_NAN : maxDouble));
+                    columns.put(columnName, new ColumnValue.DoubleFloatColumn(intervalInfo.hasMaxDouble() ? maxDouble : CommonSetting.DOUBLE_NAN));
                     Row row = new Row(vin, intervalInfo.getTimeLowerBound(), columns);
                     rowList.add(row);
                 }

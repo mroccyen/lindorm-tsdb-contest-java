@@ -10,4 +10,6 @@ public class CommonSetting {
     public final static long DEFAULT_TIMESTAMP = 1689091200000L;
     public final static int INT_NAN = Integer.MIN_VALUE;
     public final static double DOUBLE_NAN = Double.NEGATIVE_INFINITY;
+    public final static int INT_MIN = Integer.MIN_VALUE;
+    public final static double DOUBLE_MIN = -Double.MAX_VALUE;
 }
