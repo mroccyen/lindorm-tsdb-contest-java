@@ -365,6 +365,7 @@ public class DataQueryHandler {
             return new ArrayList<>();
         }
         for (IntervalInfo intervalInfo : intervalInfoList) {
+            System.out.println(">>> doExecuteDownsampleQuery columnName: " + columnName + ", intervalInfo: " + intervalInfo.toString());
             if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_INTEGER)) {
                 //没有扫描到任何值
                 if (!intervalInfo.hasScanData()) {

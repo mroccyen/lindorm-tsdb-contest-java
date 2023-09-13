@@ -102,4 +102,21 @@ public class IntervalInfo {
     public void setTotalCountDouble(int totalCountDouble) {
         this.totalCountDouble = totalCountDouble;
     }
+
+    @Override
+    public String toString() {
+        return "IntervalInfo{" +
+            "hasScanData=" + hasScanData +
+            ", hasMaxInt=" + hasMaxInt +
+            ", hasMaxDouble=" + hasMaxDouble +
+            ", timeLowerBound=" + timeLowerBound +
+            ", timeUpperBound=" + timeUpperBound +
+            ", maxInt=" + maxInt +
+            ", totalInt=" + totalInt +
+            ", totalCountInt=" + totalCountInt +
+            ", maxDouble=" + maxDouble +
+            ", totalDouble=" + totalDouble +
+            ", totalCountDouble=" + totalCountDouble +
+            '}';
+    }
 }
