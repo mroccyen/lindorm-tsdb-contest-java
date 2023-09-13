@@ -278,7 +278,7 @@ public class DataQueryHandler {
                 if (totalCountDouble != 0) {
                     avg = totalDouble / totalCountDouble;
                 } else {
-                    System.out.println(">>> doExecuteAggregateQuery have not max double");
+                    System.out.println(">>> doExecuteAggregateQuery have not total count double");
                     return new ArrayList<>();
                 }
                 Map<String, ColumnValue> columns = new HashMap<>();
