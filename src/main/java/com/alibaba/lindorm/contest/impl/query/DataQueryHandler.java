@@ -174,6 +174,7 @@ public class DataQueryHandler {
 
         FileChannel fileChannel = fileManager.getReadFileChannel(tableName, vin);
         if (fileChannel == null || fileChannel.size() == 0) {
+            System.out.println(">>> doExecuteAggregateQuery fileChannel have not data");
             return new ArrayList<>();
         }
         SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
@@ -227,6 +228,7 @@ public class DataQueryHandler {
         if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_INTEGER)) {
             if (aggregator.equals(Aggregator.MAX)) {
                 if (!hasMaxInt) {
+                    System.out.println(">>> doExecuteAggregateQuery have not max int");
                     return new ArrayList<>();
                 }
                 Map<String, ColumnValue> columns = new HashMap<>();
@@ -239,6 +241,7 @@ public class DataQueryHandler {
                 if (totalCountInt != 0) {
                     avg = (double) totalInt / totalCountInt;
                 } else {
+                    System.out.println(">>> doExecuteAggregateQuery have not total count int");
                     return new ArrayList<>();
                 }
                 Map<String, ColumnValue> columns = new HashMap<>();
@@ -250,6 +253,7 @@ public class DataQueryHandler {
         if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_DOUBLE_FLOAT)) {
             if (aggregator.equals(Aggregator.MAX)) {
                 if (hasMaxDouble) {
+                    System.out.println(">>> doExecuteAggregateQuery have not max double");
                     return new ArrayList<>();
                 }
                 Map<String, ColumnValue> columns = new HashMap<>();
@@ -262,6 +266,7 @@ public class DataQueryHandler {
                 if (totalCountDouble != 0) {
                     avg = totalDouble / totalCountDouble;
                 } else {
+                    System.out.println(">>> doExecuteAggregateQuery have not max double");
                     return new ArrayList<>();
                 }
                 Map<String, ColumnValue> columns = new HashMap<>();
@@ -278,6 +283,7 @@ public class DataQueryHandler {
         Vin vin = trReadReq.getVin();
         FileChannel fileChannel = fileManager.getReadFileChannel(tableName, vin);
         if (fileChannel == null || fileChannel.size() == 0) {
+            System.out.println(">>> doExecuteDownsampleQuery fileChannel have not data");
             return new ArrayList<>();
         }
         String columnName = trReadReq.getColumnName();
