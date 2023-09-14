@@ -232,21 +232,21 @@ public class DataQueryHandler {
         }
         ArrayList<Row> rowList = new ArrayList<>();
         if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_INTEGER)) {
-            System.out.println(">>> doExecuteAggregateQuery columnName:" + columnName + ", aggregator:" + aggregator.name() + ", result:{" +
-                "hasMaxInt=" + hasMaxInt +
-                ", hasMaxDouble=" + hasMaxDouble +
-                ", timeLowerBound=" + timeLowerBound +
-                ", timeUpperBound=" + timeUpperBound +
-                ", maxInt=" + maxInt +
-                ", totalInt=" + totalInt +
-                ", totalCountInt=" + totalCountInt +
-                ", maxDouble=" + maxDouble +
-                ", totalDouble=" + totalDouble +
-                ", totalCountDouble=" + totalCountDouble +
-                '}');
+//            System.out.println(">>> doExecuteAggregateQuery columnName:" + columnName + ", aggregator:" + aggregator.name() + ", result:{" +
+//                "hasMaxInt=" + hasMaxInt +
+//                ", hasMaxDouble=" + hasMaxDouble +
+//                ", timeLowerBound=" + timeLowerBound +
+//                ", timeUpperBound=" + timeUpperBound +
+//                ", maxInt=" + maxInt +
+//                ", totalInt=" + totalInt +
+//                ", totalCountInt=" + totalCountInt +
+//                ", maxDouble=" + maxDouble +
+//                ", totalDouble=" + totalDouble +
+//                ", totalCountDouble=" + totalCountDouble +
+//                '}');
             if (aggregator.equals(Aggregator.MAX)) {
                 if (!hasMaxInt) {
-                    System.out.println(">>> doExecuteAggregateQuery have not max int");
+//                    System.out.println(">>> doExecuteAggregateQuery have not max int");
                     return new ArrayList<>();
                 }
                 Map<String, ColumnValue> columns = new HashMap<>();
@@ -259,7 +259,7 @@ public class DataQueryHandler {
                 if (totalCountInt.compareTo(BigDecimal.ZERO) != 0) {
                     avg = totalInt.divide(totalCountInt, 12, RoundingMode.HALF_UP).doubleValue();
                 } else {
-                    System.out.println(">>> doExecuteAggregateQuery have not total count int");
+//                    System.out.println(">>> doExecuteAggregateQuery have not total count int");
                     return new ArrayList<>();
                 }
                 Map<String, ColumnValue> columns = new HashMap<>();
@@ -271,7 +271,7 @@ public class DataQueryHandler {
         if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_DOUBLE_FLOAT)) {
             if (aggregator.equals(Aggregator.MAX)) {
                 if (!hasMaxDouble) {
-                    System.out.println(">>> doExecuteAggregateQuery have not max double");
+//                    System.out.println(">>> doExecuteAggregateQuery have not max double");
                     return new ArrayList<>();
                 }
                 Map<String, ColumnValue> columns = new HashMap<>();
@@ -284,7 +284,7 @@ public class DataQueryHandler {
                 if (totalCountDouble.compareTo(BigDecimal.ZERO) != 0) {
                     avg = totalDouble.divide(totalCountDouble, 12, RoundingMode.HALF_UP).doubleValue();
                 } else {
-                    System.out.println(">>> doExecuteAggregateQuery have not total count double");
+//                    System.out.println(">>> doExecuteAggregateQuery have not total count double");
                     return new ArrayList<>();
                 }
                 Map<String, ColumnValue> columns = new HashMap<>();
@@ -383,7 +383,7 @@ public class DataQueryHandler {
             return new ArrayList<>();
         }
         for (IntervalInfo intervalInfo : intervalInfoList) {
-            System.out.println(">>> doExecuteDownsampleQuery columnName:" + columnName + ", aggregator:" + aggregator.name() + ", intervalInfo:" + intervalInfo.toString());
+//            System.out.println(">>> doExecuteDownsampleQuery columnName:" + columnName + ", aggregator:" + aggregator.name() + ", intervalInfo:" + intervalInfo.toString());
             if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_INTEGER)) {
                 //没有扫描到任何值
                 if (!intervalInfo.hasScanData()) {
