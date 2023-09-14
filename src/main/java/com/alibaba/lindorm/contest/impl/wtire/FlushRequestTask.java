@@ -94,8 +94,8 @@ public class FlushRequestTask extends Thread {
                 }
 
                 //获得写文件锁
-                Lock writeLock = fileManager.getWriteLock(tableName, vin);
-                writeLock.lock();
+                //Lock writeLock = fileManager.getWriteLock(tableName, vin);
+                //writeLock.lock();
 
                 long delta = row.getTimestamp() - CommonSetting.DEFAULT_TIMESTAMP;
                 long position = dataWriteFileChanel.position();
@@ -127,7 +127,7 @@ public class FlushRequestTask extends Thread {
                 IndexLoader.offerLatestIndex(tableName, vin, index);
 
                 //释放写文件锁
-                writeLock.unlock();
+                //writeLock.unlock();
 
                 byteBuffersDataOutput.reset();
             }
