@@ -17,6 +17,8 @@ import com.alibaba.lindorm.contest.structs.TimeRangeQueryRequest;
 import com.alibaba.lindorm.contest.structs.Vin;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
@@ -43,6 +45,7 @@ public class DataQueryHandler {
         try {
             result = doExecuteLatestQuery(pReadReq);
         } catch (Exception ex) {
+            System.out.println(">>> executeLatestQuery happen exception: " + ex.getMessage());
             System.out.println(">>> executeLatestQuery happen exception: " + ex.getClass().getName());
             for (StackTraceElement stackTraceElement : ex.getStackTrace()) {
                 System.out.println(">>> executeLatestQuery happen exception: " + stackTraceElement.toString());
@@ -61,6 +64,7 @@ public class DataQueryHandler {
         try {
             result = doExecuteTimeRangeQuery(trReadReq);
         } catch (Exception ex) {
+            System.out.println(">>> executeTimeRangeQuery happen exception: " + ex.getMessage());
             System.out.println(">>> executeTimeRangeQuery happen exception: " + ex.getClass().getName());
             for (StackTraceElement stackTraceElement : ex.getStackTrace()) {
                 System.out.println(">>> executeTimeRangeQuery happen exception: " + stackTraceElement.toString());
@@ -79,6 +83,7 @@ public class DataQueryHandler {
         try {
             result = doExecuteAggregateQuery(aggregationReq);
         } catch (Exception ex) {
+            System.out.println(">>> executeAggregateQuery happen exception: " + ex.getMessage());
             System.out.println(">>> executeAggregateQuery happen exception: " + ex.getClass().getName());
             for (StackTraceElement stackTraceElement : ex.getStackTrace()) {
                 System.out.println(">>> executeAggregateQuery happen exception: " + stackTraceElement.toString());
@@ -97,6 +102,7 @@ public class DataQueryHandler {
         try {
             result = doExecuteDownsampleQuery(downsampleReq);
         } catch (Exception ex) {
+            System.out.println(">>> executeDownsampleQuery happen exception: " + ex.getMessage());
             System.out.println(">>> executeDownsampleQuery happen exception: " + ex.getClass().getName());
             for (StackTraceElement stackTraceElement : ex.getStackTrace()) {
                 System.out.println(">>> executeDownsampleQuery happen exception: " + stackTraceElement.toString());
@@ -182,12 +188,12 @@ public class DataQueryHandler {
         ColumnValue.ColumnType columnType = getColumnType(schemaMeta, columnName);
         int maxInt = CommonSetting.INT_MIN;
         boolean hasMaxInt = false;
-        int totalInt = 0;
-        int totalCountInt = 0;
+        BigDecimal totalInt = BigDecimal.ZERO;
+        BigDecimal totalCountInt = BigDecimal.ZERO;
         double maxDouble = CommonSetting.DOUBLE_MIN;
         boolean hasMaxDouble = false;
-        double totalDouble = 0;
-        int totalCountDouble = 0;
+        BigDecimal totalDouble = BigDecimal.ZERO;
+        BigDecimal totalCountDouble = BigDecimal.ZERO;
         MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
         ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
         while (dataInput.position() < dataInput.size()) {
@@ -204,8 +210,8 @@ public class DataQueryHandler {
                 ColumnValue columnValue = columns.get(columnName);
                 if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_INTEGER)) {
                     int integerValue = columnValue.getIntegerValue();
-                    totalInt += integerValue;
-                    totalCountInt++;
+                    totalInt = totalInt.add(new BigDecimal(String.valueOf(integerValue)));
+                    totalCountInt = totalCountInt.add(BigDecimal.ONE);
                     if (integerValue > maxInt) {
                         maxInt = integerValue;
                     }
@@ -213,8 +219,8 @@ public class DataQueryHandler {
                 }
                 if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_DOUBLE_FLOAT)) {
                     double doubleFloatValue = columnValue.getDoubleFloatValue();
-                    totalDouble += doubleFloatValue;
-                    totalCountDouble++;
+                    totalDouble = totalDouble.add(new BigDecimal(doubleFloatValue));
+                    totalCountDouble = totalCountDouble.add(BigDecimal.ONE);
                     if (doubleFloatValue > maxDouble) {
                         maxDouble = doubleFloatValue;
                     }
@@ -250,8 +256,8 @@ public class DataQueryHandler {
             }
             if (aggregator.equals(Aggregator.AVG)) {
                 double avg;
-                if (totalCountInt != 0) {
-                    avg = (double) totalInt / totalCountInt;
+                if (totalCountInt.compareTo(BigDecimal.ZERO) != 0) {
+                    avg = totalInt.divide(totalCountInt, 12, RoundingMode.HALF_UP).doubleValue();
                 } else {
                     System.out.println(">>> doExecuteAggregateQuery have not total count int");
                     return new ArrayList<>();
@@ -275,8 +281,8 @@ public class DataQueryHandler {
             }
             if (aggregator.equals(Aggregator.AVG)) {
                 double avg;
-                if (totalCountDouble != 0) {
-                    avg = totalDouble / totalCountDouble;
+                if (totalCountDouble.compareTo(BigDecimal.ZERO) != 0) {
+                    avg = totalDouble.divide(totalCountDouble, 12, RoundingMode.HALF_UP).doubleValue();
                 } else {
                     System.out.println(">>> doExecuteAggregateQuery have not total count double");
                     return new ArrayList<>();
@@ -339,11 +345,11 @@ public class DataQueryHandler {
                 if (columnFilter.doCompare(columnValue)) {
                     if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_INTEGER)) {
                         int integerValue = columnValue.getIntegerValue();
-                        int totalInt = intervalInfo.getTotalInt();
-                        totalInt += integerValue;
+                        BigDecimal totalInt = intervalInfo.getTotalInt();
+                        totalInt = totalInt.add(new BigDecimal(integerValue));
                         intervalInfo.setTotalInt(totalInt);
-                        int totalCountInt = intervalInfo.getTotalCountInt();
-                        totalCountInt++;
+                        BigDecimal totalCountInt = intervalInfo.getTotalCountInt();
+                        totalCountInt = totalCountInt.add(BigDecimal.ONE);
                         intervalInfo.setTotalCountInt(totalCountInt);
                         int maxInt = intervalInfo.getMaxInt();
                         if (integerValue > maxInt) {
@@ -354,11 +360,11 @@ public class DataQueryHandler {
                     }
                     if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_DOUBLE_FLOAT)) {
                         double doubleFloatValue = columnValue.getDoubleFloatValue();
-                        double totalDouble = intervalInfo.getTotalDouble();
-                        totalDouble += doubleFloatValue;
+                        BigDecimal totalDouble = intervalInfo.getTotalDouble();
+                        totalDouble = totalDouble.add(new BigDecimal(doubleFloatValue));
                         intervalInfo.setTotalDouble(totalDouble);
-                        int totalCountDouble = intervalInfo.getTotalCountDouble();
-                        totalCountDouble++;
+                        BigDecimal totalCountDouble = intervalInfo.getTotalCountDouble();
+                        totalCountDouble = totalCountDouble.add(BigDecimal.ONE);
                         intervalInfo.setTotalCountDouble(totalCountDouble);
                         double maxDouble = intervalInfo.getMaxDouble();
                         if (doubleFloatValue > maxDouble) {
@@ -396,8 +402,8 @@ public class DataQueryHandler {
                 }
                 if (aggregator.equals(Aggregator.AVG)) {
                     double avg;
-                    if (intervalInfo.getTotalCountInt() != 0) {
-                        avg = (double) intervalInfo.getTotalInt() / intervalInfo.getTotalCountInt();
+                    if (intervalInfo.getTotalCountInt().compareTo(BigDecimal.ZERO) != 0) {
+                        avg = intervalInfo.getTotalInt().divide(intervalInfo.getTotalCountInt(), 12, RoundingMode.HALF_UP).doubleValue();
                     } else {
                         avg = CommonSetting.DOUBLE_NAN;
                     }
@@ -425,8 +431,8 @@ public class DataQueryHandler {
                 }
                 if (aggregator.equals(Aggregator.AVG)) {
                     double avg;
-                    if (intervalInfo.getTotalCountDouble() != 0) {
-                        avg = intervalInfo.getTotalDouble() / intervalInfo.getTotalCountDouble();
+                    if (intervalInfo.getTotalCountDouble().compareTo(BigDecimal.ZERO) != 0) {
+                        avg = intervalInfo.getTotalDouble().divide(intervalInfo.getTotalCountDouble(), 12, RoundingMode.HALF_UP).doubleValue();
                     } else {
                         avg = CommonSetting.DOUBLE_NAN;
                     }

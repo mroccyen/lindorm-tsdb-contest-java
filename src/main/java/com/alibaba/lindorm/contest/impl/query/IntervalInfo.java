@@ -2,6 +2,8 @@ package com.alibaba.lindorm.contest.impl.query;
 
 import com.alibaba.lindorm.contest.impl.common.CommonSetting;
 
+import java.math.BigDecimal;
+
 public class IntervalInfo {
     private boolean hasScanData = false;
     private boolean hasMaxInt = false;
@@ -9,11 +11,11 @@ public class IntervalInfo {
     private long timeLowerBound;
     private long timeUpperBound;
     private int maxInt = CommonSetting.INT_MIN;
-    private int totalInt = 0;
-    private int totalCountInt = 0;
+    private BigDecimal totalInt = BigDecimal.ZERO;
+    private BigDecimal totalCountInt = BigDecimal.ZERO;
     private double maxDouble = CommonSetting.DOUBLE_MIN;
-    private double totalDouble = 0;
-    private int totalCountDouble = 0;
+    private BigDecimal totalDouble = BigDecimal.ZERO;
+    private BigDecimal totalCountDouble = BigDecimal.ZERO;
 
     public boolean hasScanData() {
         return hasScanData;
@@ -63,19 +65,19 @@ public class IntervalInfo {
         this.maxInt = maxInt;
     }
 
-    public int getTotalInt() {
+    public BigDecimal getTotalInt() {
         return totalInt;
     }
 
-    public void setTotalInt(int totalInt) {
+    public void setTotalInt(BigDecimal totalInt) {
         this.totalInt = totalInt;
     }
 
-    public int getTotalCountInt() {
+    public BigDecimal getTotalCountInt() {
         return totalCountInt;
     }
 
-    public void setTotalCountInt(int totalCountInt) {
+    public void setTotalCountInt(BigDecimal totalCountInt) {
         this.totalCountInt = totalCountInt;
     }
 
@@ -87,19 +89,19 @@ public class IntervalInfo {
         this.maxDouble = maxDouble;
     }
 
-    public double getTotalDouble() {
+    public BigDecimal getTotalDouble() {
         return totalDouble;
     }
 
-    public void setTotalDouble(double totalDouble) {
+    public void setTotalDouble(BigDecimal totalDouble) {
         this.totalDouble = totalDouble;
     }
 
-    public int getTotalCountDouble() {
+    public BigDecimal getTotalCountDouble() {
         return totalCountDouble;
     }
 
-    public void setTotalCountDouble(int totalCountDouble) {
+    public void setTotalCountDouble(BigDecimal totalCountDouble) {
         this.totalCountDouble = totalCountDouble;
     }
 
