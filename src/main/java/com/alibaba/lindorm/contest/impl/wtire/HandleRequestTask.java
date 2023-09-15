@@ -58,6 +58,7 @@ public class HandleRequestTask extends Thread {
                 }
             } catch (Exception e) {
                 System.out.println(">>> " + Thread.currentThread().getName() + " thread happen exception: " + e.getMessage());
+                System.out.println(">>> " + Thread.currentThread().getName() + " thread happen exception: " + e.getClass().getName());
                 for (StackTraceElement stackTraceElement : e.getStackTrace()) {
                     System.out.println(">>> " + Thread.currentThread().getName() + " thread happen exception: " + stackTraceElement.toString());
                 }
