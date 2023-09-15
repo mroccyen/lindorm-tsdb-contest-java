@@ -2,8 +2,6 @@ package com.alibaba.lindorm.contest.impl.wtire;
 
 import com.alibaba.lindorm.contest.impl.common.CommonSetting;
 import com.alibaba.lindorm.contest.impl.file.FileManager;
-import com.alibaba.lindorm.contest.structs.Row;
-import com.alibaba.lindorm.contest.structs.WriteRequest;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,10 +18,7 @@ public class HandleRequestTask extends Thread {
 
     private boolean stop = false;
 
-    private final FileManager fileManager;
-
     public HandleRequestTask(FileManager fileManager) {
-        this.fileManager = fileManager;
         for (int i = 0; i < CommonSetting.WRITE_THREAD_COUNT; i++) {
             FlushRequestTask flushRequestTask = new FlushRequestTask(fileManager, this);
             flushRequestTaskList.add(flushRequestTask);
@@ -48,10 +43,6 @@ public class HandleRequestTask extends Thread {
                 while (true) {
                     WriteRequestWrapper writeRequestWrapper = writeRequestQueue.poll(5, TimeUnit.MILLISECONDS);
                     if (writeRequestWrapper != null) {
-                        WriteRequest writeRequest = writeRequestWrapper.getWriteRequest();
-                        for (Row row : writeRequest.getRows()) {
-                            fileManager.getWriteFilChannel(writeRequest.getTableName(), row.getVin());
-                        }
                         writeRequestWrapperList.add(writeRequestWrapper);
                     } else {
                         if (writeRequestWrapperList.size() != 0) {

@@ -72,8 +72,8 @@ public class FileManager {
             }
         }
         //加锁
-        //Lock writeLock = getWriteLock(tableName, vin);
-        //writeLock.lock();
+        Lock writeLock = getWriteLock(tableName, vin);
+        writeLock.lock();
 
         //拿到锁后先查询一次，可能会出现之前有线程创建了
         Map<Vin, FileChannel> fileChannelMap = writeFileMap.get(tableName);
@@ -109,7 +109,7 @@ public class FileManager {
         getReadFileChannel(tableName, vin);
 
         //释放锁
-        //writeLock.unlock();
+        writeLock.unlock();
 
         return writeFileChannel;
     }
