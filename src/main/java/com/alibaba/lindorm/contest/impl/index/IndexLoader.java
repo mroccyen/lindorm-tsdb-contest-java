@@ -1,11 +1,14 @@
 package com.alibaba.lindorm.contest.impl.index;
 
 import com.alibaba.lindorm.contest.impl.file.FileManager;
+import com.alibaba.lindorm.contest.impl.store.ByteBuffersDataInput;
 import com.alibaba.lindorm.contest.structs.Vin;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -48,40 +51,25 @@ public class IndexLoader {
                 continue;
             }
             MappedByteBuffer dataByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
-            while (dataByteBuffer.hasRemaining()) {
+            ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(dataByteBuffer));
+            while (dataInput.position() < dataInput.size()) {
                 byte[] vinByte = new byte[Vin.VIN_LENGTH];
                 for (int i = 0; i < Vin.VIN_LENGTH; i++) {
-                    vinByte[i] = dataByteBuffer.get();
+                    vinByte[i] = dataInput.readByte();
                 }
-                long offset = dataByteBuffer.getLong();
-                IndexLoadCompleteNotice notice = new IndexLoadCompleteNotice();
-                notice.setComplete(false);
-                notice.setTableName(tableName);
-                notice.setOffset(offset);
-                notice.setVin(vinByte);
-                try {
-                    indexLoaderTask.getWriteRequestQueue().put(notice);
-                } catch (InterruptedException e) {
-                    System.out.println(e.getMessage());
-                    System.exit(-1);
-                }
+                long delta = dataInput.readVLong();
+                int size = dataInput.readVInt();
+                ByteBuffer buffer = ByteBuffer.allocate(size);
+                dataInput.readBytes(buffer, size);
+
+                Index index = new Index();
+                index.setRowKey(vinByte);
+                index.setDelta(delta);
+                index.setBuffer(buffer);
+                index.setBytes(buffer.array());
+
+                offerLatestIndex(tableName, new Vin(vinByte), index);
             }
-            IndexLoadCompleteWrapper wrapper = new IndexLoadCompleteWrapper();
-            wrapper.getLock().lock();
-            //通知等待完成
-            indexLoaderTask.waitComplete(wrapper);
-            //结束进行通知
-            IndexLoadCompleteNotice notice = new IndexLoadCompleteNotice();
-            notice.setComplete(true);
-            indexLoaderTask.getWriteRequestQueue().offer(notice);
-            try {
-                //等待索引数据加载完成
-                wrapper.getCondition().await();
-            } catch (Exception e) {
-                System.out.println(e.getMessage());
-                System.exit(-1);
-            }
-            wrapper.getLock().unlock();
         }
         long end = System.currentTimeMillis();
         System.out.println(">>> initIndexBuffer load exist index time: " + (end - start));

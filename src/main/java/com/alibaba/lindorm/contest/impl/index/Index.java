@@ -7,6 +7,7 @@ public class Index {
     private byte[] rowKey;
     private long delta;
     private ByteBuffer buffer;
+    private byte[] bytes;
 
     public long getOffset() {
         return offset;
@@ -38,5 +39,13 @@ public class Index {
 
     public void setDelta(long delta) {
         this.delta = delta;
+    }
+
+    public byte[] getBytes() {
+        return bytes;
+    }
+
+    public void setBytes(byte[] bytes) {
+        this.bytes = bytes;
     }
 }

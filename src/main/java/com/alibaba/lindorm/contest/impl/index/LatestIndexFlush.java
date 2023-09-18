@@ -1,6 +1,7 @@
 package com.alibaba.lindorm.contest.impl.index;
 
 import com.alibaba.lindorm.contest.impl.file.FileManager;
+import com.alibaba.lindorm.contest.impl.store.ByteBuffersDataOutput;
 import com.alibaba.lindorm.contest.structs.Vin;
 
 import java.nio.ByteBuffer;
@@ -17,17 +18,21 @@ public class LatestIndexFlush {
 
     public void flushLatestIndex() {
         try {
-            //每个线程有10M缓冲区用于写数据
-            ByteBuffer dataWriteByteBuffer = ByteBuffer.allocate(25);
             ConcurrentHashMap<String, ConcurrentHashMap<Vin, Index>> latestIndexCacheMap = IndexLoader.getLatestIndexCacheMap();
             for (Map.Entry<String, ConcurrentHashMap<Vin, Index>> entry : latestIndexCacheMap.entrySet()) {
+                ByteBuffersDataOutput byteBuffersDataOutput = new ByteBuffersDataOutput();
                 FileChannel latestIndexFileChannel = fileManager.getWriteLatestIndexFile(entry.getKey());
                 for (Map.Entry<Vin, Index> e : entry.getValue().entrySet()) {
-                    dataWriteByteBuffer.put(e.getValue().getRowKey());
-                    dataWriteByteBuffer.putLong(e.getValue().getOffset());
-                    dataWriteByteBuffer.flip();
-                    latestIndexFileChannel.write(dataWriteByteBuffer);
-                    dataWriteByteBuffer.clear();
+                    byteBuffersDataOutput.writeBytes(e.getValue().getRowKey());
+                    byteBuffersDataOutput.writeVLong(e.getValue().getDelta());
+                    byteBuffersDataOutput.writeVInt(e.getValue().getBytes().length);
+                    byteBuffersDataOutput.writeBytes(e.getValue().getBuffer());
+                    ByteBuffer totalByte = ByteBuffer.allocate((int) byteBuffersDataOutput.size());
+                    for (int i = 0; i < byteBuffersDataOutput.toWriteableBufferList().size(); i++) {
+                        totalByte.put(byteBuffersDataOutput.toWriteableBufferList().get(i));
+                    }
+                    totalByte.flip();
+                    latestIndexFileChannel.write(totalByte);
                 }
                 latestIndexFileChannel.force(false);
             }

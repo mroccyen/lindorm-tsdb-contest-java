@@ -124,6 +124,7 @@ public class FlushRequestTask extends Thread {
                 dataWriteFileChanel.write(totalByte);
 
                 //add index
+                index.setBytes(bytes);
                 index.setBuffer(ByteBuffer.wrap(bytes));
                 IndexLoader.offerLatestIndex(tableName, vin, index);
 
