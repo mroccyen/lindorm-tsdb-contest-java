@@ -65,6 +65,7 @@ public class IndexLoader {
                 Index index = new Index();
                 index.setRowKey(vinByte);
                 index.setDelta(delta);
+                buffer.flip();
                 index.setBuffer(buffer);
                 index.setBytes(buffer.array());
 
