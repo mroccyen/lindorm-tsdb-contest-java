@@ -150,11 +150,7 @@ public class FlushRequestTask extends Thread {
                     dataWriteFileChanel.write(totalByte);
                 }
             }
-        }
 
-        iterator = writeRequestWrapperList.iterator();
-        while (iterator.hasNext()) {
-            WriteRequestWrapper writeRequestWrapper = iterator.next();
             //释放锁让写线程返回
             writeRequestWrapper.getLock().lock();
             writeRequestWrapper.getCondition().signal();
