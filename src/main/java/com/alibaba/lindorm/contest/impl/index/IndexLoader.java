@@ -69,8 +69,34 @@ public class IndexLoader {
                 index.setBuffer(buffer);
                 index.setBytes(buffer.array());
 
-                offerLatestIndex(tableName, new Vin(vinByte), index);
+                IndexLoadCompleteNotice notice = new IndexLoadCompleteNotice();
+                notice.setComplete(false);
+                notice.setTableName(tableName);
+                notice.setVin(vinByte);
+                notice.setIndex(index);
+                try {
+                    indexLoaderTask.getWriteRequestQueue().put(notice);
+                } catch (InterruptedException e) {
+                    System.out.println(e.getMessage());
+                    System.exit(-1);
+                }
             }
+            IndexLoadCompleteWrapper wrapper = new IndexLoadCompleteWrapper();
+            wrapper.getLock().lock();
+            //通知等待完成
+            indexLoaderTask.waitComplete(wrapper);
+            //结束进行通知
+            IndexLoadCompleteNotice notice = new IndexLoadCompleteNotice();
+            notice.setComplete(true);
+            indexLoaderTask.getWriteRequestQueue().offer(notice);
+            try {
+                //等待索引数据加载完成
+                wrapper.getCondition().await();
+            } catch (Exception e) {
+                System.out.println(e.getMessage());
+                System.exit(-1);
+            }
+            wrapper.getLock().unlock();
         }
         long end = System.currentTimeMillis();
         System.out.println(">>> initIndexBuffer load exist index time: " + (end - start));
