@@ -65,7 +65,6 @@ public class TSDBEngineImpl extends TSDBEngine {
     @Override
     public void createTable(String tableName, Schema schema) throws IOException {
         schemaHandler.cacheTableInfo(tableName, schema);
-        fileManager.initTableWriteLockMap(tableName);
         System.out.println(">>> createTable complete");
     }
 

@@ -4,6 +4,7 @@ public class CommonSetting {
     public final static Integer WRITE_THREAD_COUNT = 8;
     public static final String SCHEMA_FILE = "schema.txt";
     public final static String LATEST_INDEX_FILE_NAME = "latest_index";
+    public final static String FILE_SPLIT = "_";
     /**
      * 2023-07-12 00:00:00
      */

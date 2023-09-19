@@ -143,31 +143,28 @@ public class DataQueryHandler {
 
         SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
         ArrayList<Row> rowList = new ArrayList<>();
+        Map<String, ColumnValue> columnList = new HashMap<>();
 
-        FileChannel fileChannel = fileManager.getReadFileChannel(tableName, vin);
-        if (fileChannel == null || fileChannel.size() == 0) {
-            return new ArrayList<>();
-        }
-        MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
-        ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
-        while (dataInput.position() < dataInput.size()) {
-            long delta = dataInput.readVLong();
-            long t = CommonSetting.DEFAULT_TIMESTAMP + delta;
-            long size = dataInput.readVLong();
-            long position = dataInput.position() + size;
-            if (t >= timeLowerBound && t < timeUpperBound) {
-                ByteBuffer tempBuffer = ByteBuffer.allocate((int) size);
-                dataInput.readBytes(tempBuffer, (int) size);
-                tempBuffer.flip();
-                ByteBuffersDataInput tempDataInput = new ByteBuffersDataInput(Collections.singletonList(ByteBuffer.wrap(tempBuffer.array())));
-
-                Map<String, ColumnValue> columns = getColumns(schemaMeta, tempDataInput, requestedColumns);
-                Row row = new Row(vin, t, columns);
-                rowList.add(row);
-            } else {
-                dataInput.seek(position);
+        for (String requestedColumn : requestedColumns) {
+            FileChannel fileChannel = fileManager.getReadFileChannel(tableName, vin, requestedColumn);
+            if (fileChannel == null || fileChannel.size() == 0) {
+                continue;
+            }
+            MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
+            ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
+            while (dataInput.position() < dataInput.size()) {
+                long delta = dataInput.readVLong();
+                long t = CommonSetting.DEFAULT_TIMESTAMP + delta;
+                Map<String, ColumnValue> columns = getColumn(schemaMeta, dataInput, requestedColumn);
+                if (t >= timeLowerBound && t < timeUpperBound) {
+                    if (columns.size() > 0) {
+                        columnList.putAll(columns);
+                    }
+                }
             }
         }
+        Row row = new Row(vin, timeLowerBound, columnList);
+        rowList.add(row);
         return rowList;
     }
 
@@ -178,7 +175,7 @@ public class DataQueryHandler {
         long timeLowerBound = trReadReq.getTimeLowerBound();
         long timeUpperBound = trReadReq.getTimeUpperBound();
 
-        FileChannel fileChannel = fileManager.getReadFileChannel(tableName, vin);
+        FileChannel fileChannel = fileManager.getReadFileChannel(tableName, vin, columnName);
         if (fileChannel == null || fileChannel.size() == 0) {
             System.out.println(">>> doExecuteAggregateQuery fileChannel have not data");
             return new ArrayList<>();
@@ -199,14 +196,8 @@ public class DataQueryHandler {
         while (dataInput.position() < dataInput.size()) {
             long delta = dataInput.readVLong();
             long t = CommonSetting.DEFAULT_TIMESTAMP + delta;
-            long size = dataInput.readVLong();
-            long position = dataInput.position() + size;
+            Map<String, ColumnValue> columns = getColumn(schemaMeta, dataInput, columnName);
             if (t >= timeLowerBound && t < timeUpperBound) {
-                ByteBuffer tempBuffer = ByteBuffer.allocate((int) size);
-                dataInput.readBytes(tempBuffer, (int) size);
-                tempBuffer.flip();
-                ByteBuffersDataInput tempDataInput = new ByteBuffersDataInput(Collections.singletonList(ByteBuffer.wrap(tempBuffer.array())));
-                Map<String, ColumnValue> columns = getColumns(schemaMeta, tempDataInput, Collections.singleton(columnName));
                 ColumnValue columnValue = columns.get(columnName);
                 if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_INTEGER)) {
                     int integerValue = columnValue.getIntegerValue();
@@ -226,8 +217,6 @@ public class DataQueryHandler {
                     }
                     hasMaxDouble = true;
                 }
-            } else {
-                dataInput.seek(position);
             }
         }
         ArrayList<Row> rowList = new ArrayList<>();
@@ -299,12 +288,12 @@ public class DataQueryHandler {
     private ArrayList<Row> doExecuteDownsampleQuery(TimeRangeDownsampleRequest trReadReq) throws IOException {
         String tableName = trReadReq.getTableName();
         Vin vin = trReadReq.getVin();
-        FileChannel fileChannel = fileManager.getReadFileChannel(tableName, vin);
+        String columnName = trReadReq.getColumnName();
+        FileChannel fileChannel = fileManager.getReadFileChannel(tableName, vin, columnName);
         if (fileChannel == null || fileChannel.size() == 0) {
             System.out.println(">>> doExecuteDownsampleQuery fileChannel have not data");
             return new ArrayList<>();
         }
-        String columnName = trReadReq.getColumnName();
         long timeLowerBound = trReadReq.getTimeLowerBound();
         long timeUpperBound = trReadReq.getTimeUpperBound();
         long interval = trReadReq.getInterval();
@@ -327,20 +316,14 @@ public class DataQueryHandler {
         while (dataInput.position() < dataInput.size()) {
             long delta = dataInput.readVLong();
             long t = CommonSetting.DEFAULT_TIMESTAMP + delta;
-            long size = dataInput.readVLong();
-            long position = dataInput.position() + size;
+            Map<String, ColumnValue> columns = getColumn(schemaMeta, dataInput, columnName);
             if (t >= timeLowerBound && t < timeUpperBound) {
                 notEmpty = true;
-                ByteBuffer tempBuffer = ByteBuffer.allocate((int) size);
-                dataInput.readBytes(tempBuffer, (int) size);
                 IntervalInfo intervalInfo = getIntervalInfo(intervalInfoList, t);
                 if (intervalInfo == null) {
                     continue;
                 }
                 intervalInfo.setHasScanData(true);
-                tempBuffer.flip();
-                ByteBuffersDataInput tempDataInput = new ByteBuffersDataInput(Collections.singletonList(ByteBuffer.wrap(tempBuffer.array())));
-                Map<String, ColumnValue> columns = getColumns(schemaMeta, tempDataInput, Collections.singleton(columnName));
                 ColumnValue columnValue = columns.get(columnName);
                 if (columnFilter.doCompare(columnValue)) {
                     if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_INTEGER)) {
@@ -374,8 +357,6 @@ public class DataQueryHandler {
                         }
                     }
                 }
-            } else {
-                dataInput.seek(position);
             }
         }
         ArrayList<Row> rowList = new ArrayList<>();
@@ -471,6 +452,29 @@ public class DataQueryHandler {
             if (requestedColumns.contains(cName)) {
                 columns.put(cName, cVal);
             }
+        }
+        return columns;
+    }
+
+    private Map<String, ColumnValue> getColumn(SchemaMeta schemaMeta, ByteBuffersDataInput tempDataInput, String requestedColumn) throws IOException {
+        Map<String, ColumnValue> columns = new HashMap<>();
+        ArrayList<String> integerColumnsNameList = schemaMeta.getIntegerColumnsName();
+        if (integerColumnsNameList.contains(requestedColumn)) {
+            int intVal = tempDataInput.readVInt();
+            ColumnValue cVal = new ColumnValue.IntegerColumn(intVal);
+            columns.put(requestedColumn, cVal);
+        }
+        ArrayList<String> doubleColumnsNameList = schemaMeta.getDoubleColumnsName();
+        if (doubleColumnsNameList.contains(requestedColumn)) {
+            double doubleVal = tempDataInput.readZDouble();
+            ColumnValue cVal = new ColumnValue.DoubleFloatColumn(doubleVal);
+            columns.put(requestedColumn, cVal);
+        }
+        ArrayList<String> stringColumnsNameList = schemaMeta.getStringColumnsName();
+        if (stringColumnsNameList.contains(requestedColumn)) {
+            String s = tempDataInput.readString();
+            ColumnValue cVal = new ColumnValue.StringColumn(ByteBuffer.wrap(s.getBytes()));
+            columns.put(requestedColumn, cVal);
         }
         return columns;
     }

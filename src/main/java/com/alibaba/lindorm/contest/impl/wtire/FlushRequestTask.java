@@ -16,21 +16,22 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Lock;
 
 public class FlushRequestTask extends Thread {
     private final FileManager fileManager;
     private boolean stop = false;
     private final HandleRequestTask handleRequestTask;
-    private final ByteBuffersDataOutput byteBuffersDataOutput;
+    private final ByteBuffersDataOutput latestDataOutput;
 
     public FlushRequestTask(FileManager fileManager, HandleRequestTask handleRequestTask) {
         this.handleRequestTask = handleRequestTask;
         this.fileManager = fileManager;
-        byteBuffersDataOutput = new ByteBuffersDataOutput();
+        latestDataOutput = new ByteBuffersDataOutput();
     }
 
     public void shutdown() {
@@ -65,25 +66,46 @@ public class FlushRequestTask extends Thread {
 
             WriteRequest writeRequest = writeRequestWrapper.getWriteRequest();
             String tableName = writeRequest.getTableName();
+
+            SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
+            Map<Vin, Map<String, ByteBuffersDataOutput>> vinByteBuffersDataOutputMap = new HashMap<>();
             Collection<Row> rows = writeRequest.getRows();
             for (Row row : rows) {
+                long delta = row.getTimestamp() - CommonSetting.DEFAULT_TIMESTAMP;
                 Vin vin = row.getVin();
-
-                FileChannel dataWriteFileChanel = fileManager.getWriteFilChannel(tableName, vin);
-                SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
+                Map<String, ByteBuffersDataOutput> byteBuffersDataOutputMap = vinByteBuffersDataOutputMap.get(vin);
+                if (byteBuffersDataOutputMap == null) {
+                    byteBuffersDataOutputMap = new HashMap<>();
+                    ArrayList<String> columnsNameList = new ArrayList<>();
+                    columnsNameList.addAll(schemaMeta.getIntegerColumnsName());
+                    columnsNameList.addAll(schemaMeta.getDoubleColumnsName());
+                    columnsNameList.addAll(schemaMeta.getStringColumnsName());
+                    for (String cName : columnsNameList) {
+                        byteBuffersDataOutputMap.put(cName, new ByteBuffersDataOutput());
+                    }
+                    vinByteBuffersDataOutputMap.put(vin, byteBuffersDataOutputMap);
+                }
 
                 ArrayList<String> integerColumnsNameList = schemaMeta.getIntegerColumnsName();
                 for (String cName : integerColumnsNameList) {
                     ColumnValue cVal = row.getColumns().get(cName);
                     ColumnValue.IntegerColumn integerColumn = (ColumnValue.IntegerColumn) cVal;
-                    byteBuffersDataOutput.writeVInt(integerColumn.getIntegerValue());
+                    int integerValue = integerColumn.getIntegerValue();
+                    latestDataOutput.writeVInt(integerValue);
+                    ByteBuffersDataOutput byteBuffersDataOutput = byteBuffersDataOutputMap.get(cName);
+                    byteBuffersDataOutput.writeVLong(delta);
+                    byteBuffersDataOutput.writeVInt(integerValue);
                 }
 
                 ArrayList<String> doubleColumnsNameList = schemaMeta.getDoubleColumnsName();
                 for (String cName : doubleColumnsNameList) {
                     ColumnValue cVal = row.getColumns().get(cName);
                     ColumnValue.DoubleFloatColumn doubleFloatColumn = (ColumnValue.DoubleFloatColumn) cVal;
-                    byteBuffersDataOutput.writeZDouble(doubleFloatColumn.getDoubleFloatValue());
+                    double doubleFloatValue = doubleFloatColumn.getDoubleFloatValue();
+                    latestDataOutput.writeZDouble(doubleFloatValue);
+                    ByteBuffersDataOutput byteBuffersDataOutput = byteBuffersDataOutputMap.get(cName);
+                    byteBuffersDataOutput.writeVLong(delta);
+                    byteBuffersDataOutput.writeZDouble(doubleFloatValue);
                 }
 
                 ArrayList<String> stringColumnsNameList = schemaMeta.getStringColumnsName();
@@ -91,47 +113,42 @@ public class FlushRequestTask extends Thread {
                     ColumnValue cVal = row.getColumns().get(cName);
                     ColumnValue.StringColumn stringColumn = (ColumnValue.StringColumn) cVal;
                     ByteBuffer stringValue = stringColumn.getStringValue();
-                    byteBuffersDataOutput.writeString(new String(stringValue.array()));
+                    String value = new String(stringValue.array());
+                    latestDataOutput.writeString(value);
+                    ByteBuffersDataOutput byteBuffersDataOutput = byteBuffersDataOutputMap.get(cName);
+                    byteBuffersDataOutput.writeVLong(delta);
+                    byteBuffersDataOutput.writeString(value);
                 }
 
-                //获得写文件锁
-                Lock writeLock = fileManager.getWriteLock(tableName, vin);
-                writeLock.lock();
-
-                long delta = row.getTimestamp() - CommonSetting.DEFAULT_TIMESTAMP;
-                long position = dataWriteFileChanel.position();
                 Index index = new Index();
-                index.setOffset(position);
                 index.setRowKey(vin.getVin());
                 index.setDelta(delta);
 
-                //压缩
-                ByteBuffer totalByte = ByteBuffer.allocate((int) byteBuffersDataOutput.size());
-                for (int i = 0; i < byteBuffersDataOutput.toWriteableBufferList().size(); i++) {
-                    totalByte.put(byteBuffersDataOutput.toWriteableBufferList().get(i));
+                ByteBuffer totalByte = ByteBuffer.allocate((int) latestDataOutput.size());
+                for (int i = 0; i < latestDataOutput.toWriteableBufferList().size(); i++) {
+                    totalByte.put(latestDataOutput.toWriteableBufferList().get(i));
                 }
                 totalByte.flip();
                 byte[] bytes = totalByte.array();
-                ByteBuffersDataOutput tempOutput = new ByteBuffersDataOutput();
-                tempOutput.writeVLong(delta);
-                tempOutput.writeVInt(bytes.length);
-                tempOutput.writeBytes(bytes);
-                totalByte = ByteBuffer.allocate((int) tempOutput.size());
-                for (ByteBuffer byteBuffer : tempOutput.toBufferList()) {
-                    totalByte.put(byteBuffer);
-                }
-                totalByte.flip();
-                dataWriteFileChanel.write(totalByte);
 
                 //add index
                 index.setBytes(bytes);
                 index.setBuffer(ByteBuffer.wrap(bytes));
                 IndexLoader.offerLatestIndex(tableName, vin, index);
 
-                //释放写文件锁
-                writeLock.unlock();
+                latestDataOutput.reset();
+            }
 
-                byteBuffersDataOutput.reset();
+            for (Map.Entry<Vin, Map<String, ByteBuffersDataOutput>> entry : vinByteBuffersDataOutputMap.entrySet()) {
+                for (Map.Entry<String, ByteBuffersDataOutput> e : entry.getValue().entrySet()) {
+                    FileChannel dataWriteFileChanel = fileManager.getWriteFilChannel(tableName, entry.getKey(), e.getKey());
+                    ByteBuffer totalByte = ByteBuffer.allocate((int) e.getValue().size());
+                    for (int i = 0; i < e.getValue().toWriteableBufferList().size(); i++) {
+                        totalByte.put(e.getValue().toWriteableBufferList().get(i));
+                    }
+                    totalByte.flip();
+                    dataWriteFileChanel.write(totalByte);
+                }
             }
         }
 

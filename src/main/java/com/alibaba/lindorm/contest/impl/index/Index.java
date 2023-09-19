@@ -3,19 +3,10 @@ package com.alibaba.lindorm.contest.impl.index;
 import java.nio.ByteBuffer;
 
 public class Index {
-    private long offset;
     private byte[] rowKey;
     private long delta;
     private ByteBuffer buffer;
     private byte[] bytes;
-
-    public long getOffset() {
-        return offset;
-    }
-
-    public void setOffset(long offset) {
-        this.offset = offset;
-    }
 
     public byte[] getRowKey() {
         return rowKey;
