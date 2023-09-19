@@ -115,7 +115,6 @@ public class FileManager {
             wtireMap.put(vin, m);
             writeFileMap.put(tableName, wtireMap);
         }
-        getReadFileChannel(tableName, vin, columnName);
 
         return writeFileChannel;
     }
