@@ -143,7 +143,7 @@ public class DataQueryHandler {
 
         SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
         ArrayList<Row> rowList = new ArrayList<>();
-        Map<String, ColumnValue> columnList = new HashMap<>();
+        Map<Long, Map<String, ColumnValue>> columnMap = new HashMap<>();
 
         for (String requestedColumn : requestedColumns) {
             FileChannel fileChannel = fileManager.getReadFileChannel(tableName, vin, requestedColumn);
@@ -158,13 +158,20 @@ public class DataQueryHandler {
                 Map<String, ColumnValue> columns = getColumn(schemaMeta, dataInput, requestedColumn);
                 if (t >= timeLowerBound && t < timeUpperBound) {
                     if (columns.size() > 0) {
-                        columnList.putAll(columns);
+                        Map<String, ColumnValue> map = columnMap.get(t);
+                        if (map == null) {
+                            columnMap.put(t, columns);
+                        } else {
+                            map.putAll(columns);
+                        }
                     }
                 }
             }
         }
-        Row row = new Row(vin, timeLowerBound, columnList);
-        rowList.add(row);
+        for (Map.Entry<Long, Map<String, ColumnValue>> entry : columnMap.entrySet()) {
+            Row row = new Row(vin, entry.getKey(), entry.getValue());
+            rowList.add(row);
+        }
         return rowList;
     }
 
