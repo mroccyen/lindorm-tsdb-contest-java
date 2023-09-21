@@ -2,12 +2,10 @@ package com.alibaba.lindorm.contest.impl.file;
 
 import com.alibaba.lindorm.contest.impl.common.CommonSetting;
 import com.alibaba.lindorm.contest.impl.schema.SchemaMeta;
-import com.alibaba.lindorm.contest.structs.Vin;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -15,8 +13,8 @@ import static java.nio.file.StandardOpenOption.APPEND;
 import static java.nio.file.StandardOpenOption.READ;
 
 public class FileManager {
-    private Map<String, Map<Vin, Map<String, FileChannel>>> writeFileMap = new ConcurrentHashMap<>();
-    private Map<String, Map<Vin, Map<String, FileChannel>>> readFileMap = new ConcurrentHashMap<>();
+    private Map<String, Map<String, FileChannel>> writeFileMap = new ConcurrentHashMap<>();
+    private Map<String, Map<String, FileChannel>> readFileMap = new ConcurrentHashMap<>();
     private final File dataPath;
     private final Map<String, SchemaMeta> tableSchemaMetaMap = new ConcurrentHashMap<>();
     private Map<String, FileChannel> writeLatestIndexFileMap = new ConcurrentHashMap<>();
@@ -31,8 +29,8 @@ public class FileManager {
         if (files != null) {
             for (File dir : files) {
                 String tableName = dir.getName();
-                Map<Vin, Map<String, FileChannel>> readFileChannelMap = new ConcurrentHashMap<>();
-                Map<Vin, Map<String, FileChannel>> writeFileChannelMap = new ConcurrentHashMap<>();
+                Map<String, FileChannel> readFileChannelMap = new ConcurrentHashMap<>();
+                Map<String, FileChannel> writeFileChannelMap = new ConcurrentHashMap<>();
                 File[] dataFiles = dir.listFiles();
                 if (dataFiles != null) {
                     for (File dataFile : dataFiles) {
@@ -42,30 +40,12 @@ public class FileManager {
                             readLatestIndexFileMap.put(tableName, latestIndexFileChannel);
                             continue;
                         }
-                        String[] split = name.split(CommonSetting.FILE_SPLIT);
-                        String vinName = split[0];
-                        String columnName = split[1];
-                        Vin vin = new Vin(vinName.getBytes());
 
                         FileChannel readFileChannel = FileChannel.open(dataFile.toPath(), READ);
-                        if (readFileChannelMap.containsKey(vin)) {
-                            Map<String, FileChannel> map = readFileChannelMap.get(vin);
-                            map.put(columnName, readFileChannel);
-                        } else {
-                            Map<String, FileChannel> map = new HashMap<>();
-                            map.put(columnName, readFileChannel);
-                            readFileChannelMap.put(vin, map);
-                        }
+                        readFileChannelMap.put(name, readFileChannel);
 
                         FileChannel writeFileChannel = FileChannel.open(dataFile.toPath(), APPEND);
-                        if (writeFileChannelMap.containsKey(vin)) {
-                            Map<String, FileChannel> map = writeFileChannelMap.get(vin);
-                            map.put(columnName, writeFileChannel);
-                        } else {
-                            Map<String, FileChannel> map = new HashMap<>();
-                            map.put(columnName, writeFileChannel);
-                            writeFileChannelMap.put(vin, map);
-                        }
+                        writeFileChannelMap.put(name, writeFileChannel);
                     }
                     writeFileMap.put(tableName, writeFileChannelMap);
                     readFileMap.put(tableName, readFileChannelMap);
@@ -74,15 +54,12 @@ public class FileManager {
         }
     }
 
-    public FileChannel getWriteFilChannel(String tableName, Vin vin, String columnName) throws IOException {
-        Map<Vin, Map<String, FileChannel>> channelMap = writeFileMap.get(tableName);
+    public FileChannel getWriteFilChannel(String tableName, String name) throws IOException {
+        Map<String, FileChannel> channelMap = writeFileMap.get(tableName);
         if (channelMap != null) {
-            Map<String, FileChannel> channel = channelMap.get(vin);
+            FileChannel channel = channelMap.get(name);
             if (channel != null) {
-                FileChannel fileChannel = channel.get(columnName);
-                if (fileChannel != null) {
-                    return fileChannel;
-                }
+                return channel;
             }
         }
 
@@ -92,42 +69,32 @@ public class FileManager {
         if (!tablePath.exists()) {
             tablePath.mkdir();
         }
-        String fileName = new String(vin.getVin()) + CommonSetting.FILE_SPLIT + columnName;
-        String s = folder + File.separator + fileName;
+        String s = folder + File.separator + name;
         File f = new File(s);
         if (!f.exists()) {
             f.createNewFile();
         }
 
         FileChannel writeFileChannel = FileChannel.open(f.toPath(), APPEND);
-        Map<Vin, Map<String, FileChannel>> wtireMap = writeFileMap.get(tableName);
+        Map<String, FileChannel> wtireMap = writeFileMap.get(tableName);
         if (wtireMap != null) {
-            Map<String, FileChannel> map = wtireMap.get(vin);
-            if (map == null) {
-                Map<String, FileChannel> m = new HashMap<>();
-                m.put(columnName, writeFileChannel);
-                wtireMap.put(vin, m);
-            }
+            wtireMap.put(name, writeFileChannel);
         } else {
             wtireMap = new ConcurrentHashMap<>();
-            Map<String, FileChannel> m = new HashMap<>();
-            m.put(columnName, writeFileChannel);
-            wtireMap.put(vin, m);
+            wtireMap.put(name, writeFileChannel);
             writeFileMap.put(tableName, wtireMap);
         }
+        getReadFileChannel(tableName, name);
 
         return writeFileChannel;
     }
 
-    public FileChannel getReadFileChannel(String tableName, Vin vin, String columnName) throws IOException {
-        Map<Vin, Map<String, FileChannel>> vinFileChannelMap = readFileMap.get(tableName);
+    public FileChannel getReadFileChannel(String tableName, String name) throws IOException {
+        Map<String, FileChannel> vinFileChannelMap = readFileMap.get(tableName);
         if (vinFileChannelMap != null) {
-            Map<String, FileChannel> fileChannel = vinFileChannelMap.get(vin);
+            FileChannel fileChannel = vinFileChannelMap.get(name);
             if (fileChannel != null) {
-                FileChannel f = fileChannel.get(columnName);
-                if (f != null) {
-                    return f;
-                }
+                return fileChannel;
             }
         }
 
@@ -137,36 +104,29 @@ public class FileManager {
         if (!tablePath.exists()) {
             return null;
         }
-        String fileName = new String(vin.getVin());
-        String s = folder + File.separator + fileName;
+        String s = folder + File.separator + name;
         File f = new File(s);
         if (!f.exists()) {
             return null;
         }
         FileChannel channel = FileChannel.open(f.toPath(), READ);
-        Map<String, FileChannel> map = new HashMap<>();
-        map.put(columnName, channel);
         vinFileChannelMap = new ConcurrentHashMap<>();
-        vinFileChannelMap.put(vin, map);
+        vinFileChannelMap.put(name, channel);
         readFileMap.put(tableName, vinFileChannelMap);
         return channel;
     }
 
     public void shutdown() {
         try {
-            for (Map.Entry<String, Map<Vin, Map<String, FileChannel>>> e : writeFileMap.entrySet()) {
-                for (Map.Entry<Vin, Map<String, FileChannel>> file : e.getValue().entrySet()) {
-                    for (Map.Entry<String, FileChannel> entry : file.getValue().entrySet()) {
-                        entry.getValue().force(false);
-                        entry.getValue().close();
-                    }
+            for (Map.Entry<String, Map<String, FileChannel>> e : writeFileMap.entrySet()) {
+                for (Map.Entry<String, FileChannel> file : e.getValue().entrySet()) {
+                    file.getValue().force(false);
+                    file.getValue().close();
                 }
             }
-            for (Map.Entry<String, Map<Vin, Map<String, FileChannel>>> e : readFileMap.entrySet()) {
-                for (Map.Entry<Vin, Map<String, FileChannel>> file : e.getValue().entrySet()) {
-                    for (Map.Entry<String, FileChannel> entry : file.getValue().entrySet()) {
-                        entry.getValue().close();
-                    }
+            for (Map.Entry<String, Map<String, FileChannel>> e : readFileMap.entrySet()) {
+                for (Map.Entry<String, FileChannel> file : e.getValue().entrySet()) {
+                    file.getValue().close();
                 }
             }
             for (Map.Entry<String, FileChannel> file : writeLatestIndexFileMap.entrySet()) {

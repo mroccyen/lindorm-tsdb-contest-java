@@ -146,7 +146,7 @@ public class DataQueryHandler {
         Map<Long, Map<String, ColumnValue>> columnMap = new HashMap<>();
 
         for (String requestedColumn : requestedColumns) {
-            FileChannel fileChannel = fileManager.getReadFileChannel(tableName, vin, requestedColumn);
+            FileChannel fileChannel = fileManager.getReadFileChannel(tableName, requestedColumn);
             if (fileChannel == null || fileChannel.size() == 0) {
                 continue;
             }
@@ -182,7 +182,7 @@ public class DataQueryHandler {
         long timeLowerBound = trReadReq.getTimeLowerBound();
         long timeUpperBound = trReadReq.getTimeUpperBound();
 
-        FileChannel fileChannel = fileManager.getReadFileChannel(tableName, vin, columnName);
+        FileChannel fileChannel = fileManager.getReadFileChannel(tableName, columnName);
         if (fileChannel == null || fileChannel.size() == 0) {
             System.out.println(">>> doExecuteAggregateQuery fileChannel have not data");
             return new ArrayList<>();
@@ -296,7 +296,7 @@ public class DataQueryHandler {
         String tableName = trReadReq.getTableName();
         Vin vin = trReadReq.getVin();
         String columnName = trReadReq.getColumnName();
-        FileChannel fileChannel = fileManager.getReadFileChannel(tableName, vin, columnName);
+        FileChannel fileChannel = fileManager.getReadFileChannel(tableName, columnName);
         if (fileChannel == null || fileChannel.size() == 0) {
             System.out.println(">>> doExecuteDownsampleQuery fileChannel have not data");
             return new ArrayList<>();

@@ -14,12 +14,7 @@ import com.alibaba.lindorm.contest.structs.WriteRequest;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class FlushRequestTask extends Thread {
@@ -60,31 +55,24 @@ public class FlushRequestTask extends Thread {
 
     private void doWrite(List<WriteRequestWrapper> writeRequestWrapperList) throws IOException {
         //保存KV数据
-        Iterator<WriteRequestWrapper> iterator = writeRequestWrapperList.iterator();
-        while (iterator.hasNext()) {
-            WriteRequestWrapper writeRequestWrapper = iterator.next();
-
+        for (WriteRequestWrapper writeRequestWrapper : writeRequestWrapperList) {
             WriteRequest writeRequest = writeRequestWrapper.getWriteRequest();
             String tableName = writeRequest.getTableName();
 
             SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
-            Map<Vin, Map<String, ByteBuffersDataOutput>> vinByteBuffersDataOutputMap = new HashMap<>();
+            Map<String, ByteBuffersDataOutput> byteBuffersDataOutputMap = new HashMap<>();
+            ArrayList<String> columnsNameList = new ArrayList<>();
+            columnsNameList.addAll(schemaMeta.getIntegerColumnsName());
+            columnsNameList.addAll(schemaMeta.getDoubleColumnsName());
+            columnsNameList.addAll(schemaMeta.getStringColumnsName());
+            for (String cName : columnsNameList) {
+                byteBuffersDataOutputMap.put(cName, new ByteBuffersDataOutput());
+            }
+
             Collection<Row> rows = writeRequest.getRows();
             for (Row row : rows) {
                 long delta = row.getTimestamp() - CommonSetting.DEFAULT_TIMESTAMP;
                 Vin vin = row.getVin();
-                Map<String, ByteBuffersDataOutput> byteBuffersDataOutputMap = vinByteBuffersDataOutputMap.get(vin);
-                if (byteBuffersDataOutputMap == null) {
-                    byteBuffersDataOutputMap = new HashMap<>();
-                    ArrayList<String> columnsNameList = new ArrayList<>();
-                    columnsNameList.addAll(schemaMeta.getIntegerColumnsName());
-                    columnsNameList.addAll(schemaMeta.getDoubleColumnsName());
-                    columnsNameList.addAll(schemaMeta.getStringColumnsName());
-                    for (String cName : columnsNameList) {
-                        byteBuffersDataOutputMap.put(cName, new ByteBuffersDataOutput());
-                    }
-                    vinByteBuffersDataOutputMap.put(vin, byteBuffersDataOutputMap);
-                }
 
                 ArrayList<String> integerColumnsNameList = schemaMeta.getIntegerColumnsName();
                 for (String cName : integerColumnsNameList) {
@@ -139,16 +127,14 @@ public class FlushRequestTask extends Thread {
                 latestDataOutput.reset();
             }
 
-            for (Map.Entry<Vin, Map<String, ByteBuffersDataOutput>> entry : vinByteBuffersDataOutputMap.entrySet()) {
-                for (Map.Entry<String, ByteBuffersDataOutput> e : entry.getValue().entrySet()) {
-                    FileChannel dataWriteFileChanel = fileManager.getWriteFilChannel(tableName, entry.getKey(), e.getKey());
-                    ByteBuffer totalByte = ByteBuffer.allocate((int) e.getValue().size());
-                    for (int i = 0; i < e.getValue().toWriteableBufferList().size(); i++) {
-                        totalByte.put(e.getValue().toWriteableBufferList().get(i));
-                    }
-                    totalByte.flip();
-                    dataWriteFileChanel.write(totalByte);
+            for (Map.Entry<String, ByteBuffersDataOutput> e : byteBuffersDataOutputMap.entrySet()) {
+                FileChannel dataWriteFileChanel = fileManager.getWriteFilChannel(tableName, e.getKey());
+                ByteBuffer totalByte = ByteBuffer.allocate((int) e.getValue().size());
+                for (int i = 0; i < e.getValue().toWriteableBufferList().size(); i++) {
+                    totalByte.put(e.getValue().toWriteableBufferList().get(i));
                 }
+                totalByte.flip();
+                dataWriteFileChanel.write(totalByte);
             }
 
             //释放锁让写线程返回
