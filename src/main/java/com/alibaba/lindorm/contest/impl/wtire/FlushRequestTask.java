@@ -22,6 +22,7 @@ public class FlushRequestTask extends Thread {
     private boolean stop = false;
     private final HandleRequestTask handleRequestTask;
     private final ByteBuffersDataOutput latestDataOutput;
+    private final ByteBuffer writeBuffer = ByteBuffer.allocate(1024 * 4 * 1024);//4M
 
     public FlushRequestTask(FileManager fileManager, HandleRequestTask handleRequestTask) {
         this.handleRequestTask = handleRequestTask;
@@ -129,12 +130,12 @@ public class FlushRequestTask extends Thread {
 
             for (Map.Entry<String, ByteBuffersDataOutput> e : byteBuffersDataOutputMap.entrySet()) {
                 FileChannel dataWriteFileChanel = fileManager.getWriteFilChannel(tableName, e.getKey());
-                ByteBuffer totalByte = ByteBuffer.allocate((int) e.getValue().size());
                 for (int i = 0; i < e.getValue().toWriteableBufferList().size(); i++) {
-                    totalByte.put(e.getValue().toWriteableBufferList().get(i));
+                    writeBuffer.put(e.getValue().toWriteableBufferList().get(i));
                 }
-                totalByte.flip();
-                dataWriteFileChanel.write(totalByte);
+                writeBuffer.flip();
+                dataWriteFileChanel.write(writeBuffer);
+                writeBuffer.clear();
             }
 
             //释放锁让写线程返回
