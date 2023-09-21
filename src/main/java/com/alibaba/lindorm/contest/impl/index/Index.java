@@ -4,7 +4,7 @@ import java.nio.ByteBuffer;
 
 public class Index {
     private byte[] rowKey;
-    private long delta;
+    private long timestamp;
     private ByteBuffer buffer;
     private byte[] bytes;
 
@@ -24,12 +24,12 @@ public class Index {
         this.buffer = buffer;
     }
 
-    public long getDelta() {
-        return delta;
+    public long getTimestamp() {
+        return timestamp;
     }
 
-    public void setDelta(long delta) {
-        this.delta = delta;
+    public void setTimestamp(long timestamp) {
+        this.timestamp = timestamp;
     }
 
     public byte[] getBytes() {

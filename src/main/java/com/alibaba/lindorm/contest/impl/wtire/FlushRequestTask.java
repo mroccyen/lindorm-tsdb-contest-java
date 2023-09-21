@@ -72,7 +72,7 @@ public class FlushRequestTask extends Thread {
 
             Collection<Row> rows = writeRequest.getRows();
             for (Row row : rows) {
-                long delta = row.getTimestamp() - CommonSetting.DEFAULT_TIMESTAMP;
+                long timestamp = row.getTimestamp();
                 Vin vin = row.getVin();
 
                 ArrayList<String> integerColumnsNameList = schemaMeta.getIntegerColumnsName();
@@ -82,7 +82,7 @@ public class FlushRequestTask extends Thread {
                     int integerValue = integerColumn.getIntegerValue();
                     latestDataOutput.writeVInt(integerValue);
                     ByteBuffersDataOutput byteBuffersDataOutput = byteBuffersDataOutputMap.get(cName);
-                    byteBuffersDataOutput.writeVLong(delta);
+                    byteBuffersDataOutput.writeVLong(timestamp);
                     byteBuffersDataOutput.writeVInt(integerValue);
                 }
 
@@ -93,7 +93,7 @@ public class FlushRequestTask extends Thread {
                     double doubleFloatValue = doubleFloatColumn.getDoubleFloatValue();
                     latestDataOutput.writeZDouble(doubleFloatValue);
                     ByteBuffersDataOutput byteBuffersDataOutput = byteBuffersDataOutputMap.get(cName);
-                    byteBuffersDataOutput.writeVLong(delta);
+                    byteBuffersDataOutput.writeVLong(timestamp);
                     byteBuffersDataOutput.writeZDouble(doubleFloatValue);
                 }
 
@@ -105,13 +105,13 @@ public class FlushRequestTask extends Thread {
                     String value = new String(stringValue.array());
                     latestDataOutput.writeString(value);
                     ByteBuffersDataOutput byteBuffersDataOutput = byteBuffersDataOutputMap.get(cName);
-                    byteBuffersDataOutput.writeVLong(delta);
+                    byteBuffersDataOutput.writeVLong(timestamp);
                     byteBuffersDataOutput.writeString(value);
                 }
 
                 Index index = new Index();
                 index.setRowKey(vin.getVin());
-                index.setDelta(delta);
+                index.setTimestamp(timestamp);
 
                 ByteBuffer totalByte = ByteBuffer.allocate((int) latestDataOutput.size());
                 for (int i = 0; i < latestDataOutput.toWriteableBufferList().size(); i++) {

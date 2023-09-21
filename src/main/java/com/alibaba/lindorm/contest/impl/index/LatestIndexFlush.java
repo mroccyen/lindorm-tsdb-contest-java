@@ -24,7 +24,7 @@ public class LatestIndexFlush {
                 FileChannel latestIndexFileChannel = fileManager.getWriteLatestIndexFile(entry.getKey());
                 for (Map.Entry<Vin, Index> e : entry.getValue().entrySet()) {
                     byteBuffersDataOutput.writeBytes(e.getValue().getRowKey());
-                    byteBuffersDataOutput.writeVLong(e.getValue().getDelta());
+                    byteBuffersDataOutput.writeVLong(e.getValue().getTimestamp());
                     byteBuffersDataOutput.writeVInt(e.getValue().getBytes().length);
                     byteBuffersDataOutput.writeBytes(e.getValue().getBuffer());
                     ByteBuffer totalByte = ByteBuffer.allocate((int) byteBuffersDataOutput.size());

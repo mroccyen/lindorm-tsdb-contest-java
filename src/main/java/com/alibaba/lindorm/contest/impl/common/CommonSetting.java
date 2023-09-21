@@ -5,10 +5,6 @@ public class CommonSetting {
     public static final String SCHEMA_FILE = "schema.txt";
     public final static String LATEST_INDEX_FILE_NAME = "latest_index";
     public final static String FILE_SPLIT = "_";
-    /**
-     * 2023-07-12 00:00:00
-     */
-    public final static long DEFAULT_TIMESTAMP = 1689091200000L;
     public final static int INT_NAN = Integer.MIN_VALUE;
     public final static double DOUBLE_NAN = Double.NEGATIVE_INFINITY;
     public final static int INT_MIN = Integer.MIN_VALUE;

@@ -129,7 +129,7 @@ public class DataQueryHandler {
 
             Map<String, ColumnValue> columns = getColumns(schemaMeta, tempDataInput, requestedColumns);
             //构建Row
-            latestRowMap.put(vin, new Row(vin, CommonSetting.DEFAULT_TIMESTAMP + latestIndex.getDelta(), columns));
+            latestRowMap.put(vin, new Row(vin, latestIndex.getTimestamp(), columns));
         }
         return new ArrayList<>(latestRowMap.values());
     }
@@ -153,8 +153,7 @@ public class DataQueryHandler {
             MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
             ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
             while (dataInput.position() < dataInput.size()) {
-                long delta = dataInput.readVLong();
-                long t = CommonSetting.DEFAULT_TIMESTAMP + delta;
+                long t = dataInput.readVLong();
                 Map<String, ColumnValue> columns = getColumn(schemaMeta, dataInput, requestedColumn);
                 if (t >= timeLowerBound && t < timeUpperBound) {
                     if (columns.size() > 0) {
@@ -201,8 +200,7 @@ public class DataQueryHandler {
         MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
         ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
         while (dataInput.position() < dataInput.size()) {
-            long delta = dataInput.readVLong();
-            long t = CommonSetting.DEFAULT_TIMESTAMP + delta;
+            long t = dataInput.readVLong();
             Map<String, ColumnValue> columns = getColumn(schemaMeta, dataInput, columnName);
             if (t >= timeLowerBound && t < timeUpperBound) {
                 ColumnValue columnValue = columns.get(columnName);
@@ -321,8 +319,7 @@ public class DataQueryHandler {
         ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
         boolean notEmpty = false;
         while (dataInput.position() < dataInput.size()) {
-            long delta = dataInput.readVLong();
-            long t = CommonSetting.DEFAULT_TIMESTAMP + delta;
+            long t = dataInput.readVLong();
             Map<String, ColumnValue> columns = getColumn(schemaMeta, dataInput, columnName);
             if (t >= timeLowerBound && t < timeUpperBound) {
                 notEmpty = true;
