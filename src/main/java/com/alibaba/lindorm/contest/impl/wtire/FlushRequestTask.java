@@ -13,6 +13,7 @@ import com.alibaba.lindorm.contest.structs.WriteRequest;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -139,7 +140,9 @@ public class FlushRequestTask extends Thread {
                 writeBuffer.put(e.getValue().toWriteableBufferList().get(i));
             }
             writeBuffer.flip();
+            FileLock lock = dataWriteFileChanel.lock();
             dataWriteFileChanel.write(writeBuffer);
+            lock.close();
             writeBuffer.clear();
         }
 
