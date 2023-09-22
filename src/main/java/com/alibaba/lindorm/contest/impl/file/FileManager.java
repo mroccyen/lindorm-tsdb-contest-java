@@ -19,9 +19,22 @@ public class FileManager {
     private final Map<String, SchemaMeta> tableSchemaMetaMap = new ConcurrentHashMap<>();
     private Map<String, FileChannel> writeLatestIndexFileMap = new ConcurrentHashMap<>();
     private Map<String, FileChannel> readLatestIndexFileMap = new ConcurrentHashMap<>();
+    private boolean isWriting = false;
 
     public FileManager(File dataPath) {
         this.dataPath = dataPath;
+    }
+
+    public boolean isWriting() {
+        return isWriting;
+    }
+
+    public void startWrite() {
+        isWriting = true;
+    }
+
+    public void endWrite() {
+        isWriting = false;
     }
 
     public void loadExistFile() throws IOException {
@@ -139,10 +152,27 @@ public class FileManager {
             readFileMap = null;
             writeLatestIndexFileMap = null;
             readLatestIndexFileMap = null;
+            endWrite();
         } catch (Exception e) {
             System.out.println(">>> " + Thread.currentThread().getName() + " FileManager happen exception: " + e.getMessage());
             for (StackTraceElement stackTraceElement : e.getStackTrace()) {
                 System.out.println(">>> " + Thread.currentThread().getName() + " FileManager happen exception: " + stackTraceElement.toString());
+            }
+            System.exit(-1);
+        }
+    }
+
+    public void flush() {
+        try {
+            for (Map.Entry<String, Map<String, FileChannel>> e : writeFileMap.entrySet()) {
+                for (Map.Entry<String, FileChannel> file : e.getValue().entrySet()) {
+                    file.getValue().force(false);
+                }
+            }
+        } catch (Exception e) {
+            System.out.println(">>> " + Thread.currentThread().getName() + " FileManager flush happen exception: " + e.getMessage());
+            for (StackTraceElement stackTraceElement : e.getStackTrace()) {
+                System.out.println(">>> " + Thread.currentThread().getName() + " FileManager flush happen exception: " + stackTraceElement.toString());
             }
             System.exit(-1);
         }

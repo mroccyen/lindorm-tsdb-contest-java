@@ -59,6 +59,7 @@ public class FlushRequestTask extends Thread {
     }
 
     private void doWrite(List<WriteRequestWrapper> writeRequestWrapperList) throws IOException {
+        fileManager.startWrite();
         WriteRequestWrapper wrapper = writeRequestWrapperList.get(0);
         WriteRequest request = wrapper.getWriteRequest();
         String tableName = request.getTableName();
@@ -142,7 +143,7 @@ public class FlushRequestTask extends Thread {
             writeBuffer.flip();
             FileLock lock = dataWriteFileChanel.lock();
             dataWriteFileChanel.write(writeBuffer);
-            lock.close();
+            lock.release();
             writeBuffer.clear();
         }
 

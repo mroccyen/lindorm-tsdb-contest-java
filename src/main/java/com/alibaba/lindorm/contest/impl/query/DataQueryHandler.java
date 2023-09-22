@@ -56,6 +56,7 @@ public class DataQueryHandler {
     }
 
     public ArrayList<Row> executeTimeRangeQuery(TimeRangeQueryRequest trReadReq) throws IOException {
+        handleFlush();
         Vin vin = trReadReq.getVin();
         if (vin == null) {
             return new ArrayList<>();
@@ -75,6 +76,7 @@ public class DataQueryHandler {
     }
 
     public ArrayList<Row> executeAggregateQuery(TimeRangeAggregationRequest aggregationReq) throws IOException {
+        handleFlush();
         Vin vin = aggregationReq.getVin();
         if (vin == null) {
             return new ArrayList<>();
@@ -94,6 +96,7 @@ public class DataQueryHandler {
     }
 
     public ArrayList<Row> executeDownsampleQuery(TimeRangeDownsampleRequest downsampleReq) throws IOException {
+        handleFlush();
         Vin vin = downsampleReq.getVin();
         if (vin == null) {
             return new ArrayList<>();
@@ -506,5 +509,11 @@ public class DataQueryHandler {
             }
         }
         return null;
+    }
+
+    private void handleFlush() {
+        if (fileManager.isWriting()) {
+            fileManager.flush();
+        }
     }
 }
