@@ -1,6 +1,5 @@
 package com.alibaba.lindorm.contest.impl.wtire;
 
-import com.alibaba.lindorm.contest.impl.common.CommonSetting;
 import com.alibaba.lindorm.contest.impl.file.FileManager;
 import com.alibaba.lindorm.contest.impl.index.Index;
 import com.alibaba.lindorm.contest.impl.index.IndexLoader;
@@ -14,7 +13,11 @@ import com.alibaba.lindorm.contest.structs.WriteRequest;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class FlushRequestTask extends Thread {
@@ -55,21 +58,22 @@ public class FlushRequestTask extends Thread {
     }
 
     private void doWrite(List<WriteRequestWrapper> writeRequestWrapperList) throws IOException {
+        WriteRequestWrapper wrapper = writeRequestWrapperList.get(0);
+        WriteRequest request = wrapper.getWriteRequest();
+        String tableName = request.getTableName();
+
+        SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
+        Map<String, ByteBuffersDataOutput> byteBuffersDataOutputMap = new HashMap<>();
+        ArrayList<String> columnsNameList = new ArrayList<>();
+        columnsNameList.addAll(schemaMeta.getIntegerColumnsName());
+        columnsNameList.addAll(schemaMeta.getDoubleColumnsName());
+        columnsNameList.addAll(schemaMeta.getStringColumnsName());
+        for (String cName : columnsNameList) {
+            byteBuffersDataOutputMap.put(cName, new ByteBuffersDataOutput());
+        }
         //保存KV数据
         for (WriteRequestWrapper writeRequestWrapper : writeRequestWrapperList) {
             WriteRequest writeRequest = writeRequestWrapper.getWriteRequest();
-            String tableName = writeRequest.getTableName();
-
-            SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
-            Map<String, ByteBuffersDataOutput> byteBuffersDataOutputMap = new HashMap<>();
-            ArrayList<String> columnsNameList = new ArrayList<>();
-            columnsNameList.addAll(schemaMeta.getIntegerColumnsName());
-            columnsNameList.addAll(schemaMeta.getDoubleColumnsName());
-            columnsNameList.addAll(schemaMeta.getStringColumnsName());
-            for (String cName : columnsNameList) {
-                byteBuffersDataOutputMap.put(cName, new ByteBuffersDataOutput());
-            }
-
             Collection<Row> rows = writeRequest.getRows();
             for (Row row : rows) {
                 long timestamp = row.getTimestamp();
@@ -127,17 +131,20 @@ public class FlushRequestTask extends Thread {
 
                 latestDataOutput.reset();
             }
+        }
 
-            for (Map.Entry<String, ByteBuffersDataOutput> e : byteBuffersDataOutputMap.entrySet()) {
-                FileChannel dataWriteFileChanel = fileManager.getWriteFilChannel(tableName, e.getKey());
-                for (int i = 0; i < e.getValue().toWriteableBufferList().size(); i++) {
-                    writeBuffer.put(e.getValue().toWriteableBufferList().get(i));
-                }
-                writeBuffer.flip();
-                dataWriteFileChanel.write(writeBuffer);
-                writeBuffer.clear();
+        for (Map.Entry<String, ByteBuffersDataOutput> e : byteBuffersDataOutputMap.entrySet()) {
+            FileChannel dataWriteFileChanel = fileManager.getWriteFilChannel(tableName, e.getKey());
+            for (int i = 0; i < e.getValue().toWriteableBufferList().size(); i++) {
+                writeBuffer.put(e.getValue().toWriteableBufferList().get(i));
             }
+            writeBuffer.flip();
+            dataWriteFileChanel.write(writeBuffer);
+            writeBuffer.clear();
+        }
 
+        //通知写线程
+        for (WriteRequestWrapper writeRequestWrapper : writeRequestWrapperList) {
             //释放锁让写线程返回
             writeRequestWrapper.getLock().lock();
             writeRequestWrapper.getCondition().signal();
