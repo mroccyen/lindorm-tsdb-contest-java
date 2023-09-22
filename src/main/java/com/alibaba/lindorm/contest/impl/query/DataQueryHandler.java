@@ -134,6 +134,9 @@ public class DataQueryHandler {
             //构建Row
             latestRowMap.put(vin, new Row(vin, latestIndex.getTimestamp(), columns));
         }
+//        for (Map.Entry<Vin, Row> entry : latestRowMap.entrySet()) {
+//            System.out.println(">>> doExecuteLatestQuery key：" + entry.getValue().toString() + "，result：" + entry.getValue().toString());
+//        }
         return new ArrayList<>(latestRowMap.values());
     }
 
@@ -174,6 +177,9 @@ public class DataQueryHandler {
             Row row = new Row(vin, entry.getKey(), entry.getValue());
             rowList.add(row);
         }
+//        for (Row row : rowList) {
+//            System.out.println(">>> doExecuteTimeRangeQuery result：" + row.toString());
+//        }
         return rowList;
     }
 
