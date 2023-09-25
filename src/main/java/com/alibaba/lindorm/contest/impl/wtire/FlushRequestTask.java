@@ -87,6 +87,7 @@ public class FlushRequestTask extends Thread {
                     int integerValue = integerColumn.getIntegerValue();
                     latestDataOutput.writeVInt(integerValue);
                     ByteBuffersDataOutput byteBuffersDataOutput = byteBuffersDataOutputMap.get(cName);
+                    byteBuffersDataOutput.writeBytes(vin.getVin());
                     byteBuffersDataOutput.writeVLong(timestamp);
                     byteBuffersDataOutput.writeVInt(integerValue);
                 }
@@ -98,6 +99,7 @@ public class FlushRequestTask extends Thread {
                     double doubleFloatValue = doubleFloatColumn.getDoubleFloatValue();
                     latestDataOutput.writeZDouble(doubleFloatValue);
                     ByteBuffersDataOutput byteBuffersDataOutput = byteBuffersDataOutputMap.get(cName);
+                    byteBuffersDataOutput.writeBytes(vin.getVin());
                     byteBuffersDataOutput.writeVLong(timestamp);
                     byteBuffersDataOutput.writeZDouble(doubleFloatValue);
                 }
@@ -110,6 +112,7 @@ public class FlushRequestTask extends Thread {
                     String value = new String(stringValue.array());
                     latestDataOutput.writeString(value);
                     ByteBuffersDataOutput byteBuffersDataOutput = byteBuffersDataOutputMap.get(cName);
+                    byteBuffersDataOutput.writeBytes(vin.getVin());
                     byteBuffersDataOutput.writeVLong(timestamp);
                     byteBuffersDataOutput.writeString(value);
                 }

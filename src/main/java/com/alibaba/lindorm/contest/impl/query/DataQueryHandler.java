@@ -19,6 +19,7 @@ import com.alibaba.lindorm.contest.structs.Vin;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
@@ -134,9 +135,9 @@ public class DataQueryHandler {
             //构建Row
             latestRowMap.put(vin, new Row(vin, latestIndex.getTimestamp(), columns));
         }
-//        for (Map.Entry<Vin, Row> entry : latestRowMap.entrySet()) {
-//            System.out.println(">>> doExecuteLatestQuery key：" + entry.getValue().toString() + "，result：" + entry.getValue().toString());
-//        }
+        for (Map.Entry<Vin, Row> entry : latestRowMap.entrySet()) {
+            System.out.println(">>> doExecuteLatestQuery key：" + entry.getValue().toString() + "，result：" + entry.getValue().toString());
+        }
         return new ArrayList<>(latestRowMap.values());
     }
 
@@ -151,6 +152,7 @@ public class DataQueryHandler {
         ArrayList<Row> rowList = new ArrayList<>();
         Map<Long, Map<String, ColumnValue>> columnMap = new HashMap<>();
 
+        ByteBuffer vinBuffer = ByteBuffer.allocate(Vin.VIN_LENGTH);
         for (String requestedColumn : requestedColumns) {
             FileChannel fileChannel = fileManager.getReadFileChannel(tableName, requestedColumn);
             if (fileChannel == null || fileChannel.size() == 0) {
@@ -159,27 +161,32 @@ public class DataQueryHandler {
             MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
             ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
             while (dataInput.position() < dataInput.size()) {
+                dataInput.readBytes(vinBuffer, Vin.VIN_LENGTH);
                 long t = dataInput.readVLong();
                 Map<String, ColumnValue> columns = getColumn(schemaMeta, dataInput, requestedColumn);
-                if (t >= timeLowerBound && t < timeUpperBound) {
-                    if (columns.size() > 0) {
-                        Map<String, ColumnValue> map = columnMap.get(t);
-                        if (map == null) {
-                            columnMap.put(t, columns);
-                        } else {
-                            map.putAll(columns);
+                vinBuffer.flip();
+                if (vin.equals(new Vin(vinBuffer.array()))) {
+                    if (t >= timeLowerBound && t < timeUpperBound) {
+                        if (columns.size() > 0) {
+                            Map<String, ColumnValue> map = columnMap.get(t);
+                            if (map == null) {
+                                columnMap.put(t, columns);
+                            } else {
+                                map.putAll(columns);
+                            }
                         }
                     }
                 }
+                vinBuffer.clear();
             }
         }
         for (Map.Entry<Long, Map<String, ColumnValue>> entry : columnMap.entrySet()) {
             Row row = new Row(vin, entry.getKey(), entry.getValue());
             rowList.add(row);
         }
-//        for (Row row : rowList) {
-//            System.out.println(">>> doExecuteTimeRangeQuery result：" + row.toString());
-//        }
+        for (Row row : rowList) {
+            System.out.println(">>> doExecuteTimeRangeQuery result：" + row.toString());
+        }
         return rowList;
     }
 
@@ -208,30 +215,36 @@ public class DataQueryHandler {
         BigDecimal totalCountDouble = BigDecimal.ZERO;
         MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
         ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
+        ByteBuffer vinBuffer = ByteBuffer.allocate(Vin.VIN_LENGTH);
         while (dataInput.position() < dataInput.size()) {
+            dataInput.readBytes(vinBuffer, Vin.VIN_LENGTH);
             long t = dataInput.readVLong();
             Map<String, ColumnValue> columns = getColumn(schemaMeta, dataInput, columnName);
-            if (t >= timeLowerBound && t < timeUpperBound) {
-                ColumnValue columnValue = columns.get(columnName);
-                if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_INTEGER)) {
-                    int integerValue = columnValue.getIntegerValue();
-                    totalInt = totalInt.add(new BigDecimal(String.valueOf(integerValue)));
-                    totalCountInt = totalCountInt.add(BigDecimal.ONE);
-                    if (integerValue > maxInt) {
-                        maxInt = integerValue;
+            vinBuffer.flip();
+            if (vin.equals(new Vin(vinBuffer.array()))) {
+                if (t >= timeLowerBound && t < timeUpperBound) {
+                    ColumnValue columnValue = columns.get(columnName);
+                    if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_INTEGER)) {
+                        int integerValue = columnValue.getIntegerValue();
+                        totalInt = totalInt.add(new BigDecimal(String.valueOf(integerValue)));
+                        totalCountInt = totalCountInt.add(BigDecimal.ONE);
+                        if (integerValue > maxInt) {
+                            maxInt = integerValue;
+                        }
+                        hasMaxInt = true;
                     }
-                    hasMaxInt = true;
-                }
-                if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_DOUBLE_FLOAT)) {
-                    double doubleFloatValue = columnValue.getDoubleFloatValue();
-                    totalDouble = totalDouble.add(new BigDecimal(doubleFloatValue));
-                    totalCountDouble = totalCountDouble.add(BigDecimal.ONE);
-                    if (doubleFloatValue > maxDouble) {
-                        maxDouble = doubleFloatValue;
+                    if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_DOUBLE_FLOAT)) {
+                        double doubleFloatValue = columnValue.getDoubleFloatValue();
+                        totalDouble = totalDouble.add(new BigDecimal(doubleFloatValue));
+                        totalCountDouble = totalCountDouble.add(BigDecimal.ONE);
+                        if (doubleFloatValue > maxDouble) {
+                            maxDouble = doubleFloatValue;
+                        }
+                        hasMaxDouble = true;
                     }
-                    hasMaxDouble = true;
                 }
             }
+            vinBuffer.clear();
         }
         ArrayList<Row> rowList = new ArrayList<>();
         if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_INTEGER)) {
@@ -327,50 +340,56 @@ public class DataQueryHandler {
         MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
         ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
         boolean notEmpty = false;
+        ByteBuffer vinBuffer = ByteBuffer.allocate(Vin.VIN_LENGTH);
         while (dataInput.position() < dataInput.size()) {
+            dataInput.readBytes(vinBuffer, Vin.VIN_LENGTH);
             long t = dataInput.readVLong();
             Map<String, ColumnValue> columns = getColumn(schemaMeta, dataInput, columnName);
-            if (t >= timeLowerBound && t < timeUpperBound) {
-                notEmpty = true;
-                IntervalInfo intervalInfo = getIntervalInfo(intervalInfoList, t);
-                if (intervalInfo == null) {
-                    continue;
-                }
-                intervalInfo.setHasScanData(true);
-                ColumnValue columnValue = columns.get(columnName);
-                if (columnFilter.doCompare(columnValue)) {
-                    if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_INTEGER)) {
-                        int integerValue = columnValue.getIntegerValue();
-                        BigDecimal totalInt = intervalInfo.getTotalInt();
-                        totalInt = totalInt.add(new BigDecimal(integerValue));
-                        intervalInfo.setTotalInt(totalInt);
-                        BigDecimal totalCountInt = intervalInfo.getTotalCountInt();
-                        totalCountInt = totalCountInt.add(BigDecimal.ONE);
-                        intervalInfo.setTotalCountInt(totalCountInt);
-                        int maxInt = intervalInfo.getMaxInt();
-                        if (integerValue > maxInt) {
-                            maxInt = integerValue;
-                            intervalInfo.setMaxInt(maxInt);
-                            intervalInfo.setHasMaxInt(true);
-                        }
+            vinBuffer.flip();
+            if (vin.equals(new Vin(vinBuffer.array()))) {
+                if (t >= timeLowerBound && t < timeUpperBound) {
+                    notEmpty = true;
+                    IntervalInfo intervalInfo = getIntervalInfo(intervalInfoList, t);
+                    if (intervalInfo == null) {
+                        continue;
                     }
-                    if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_DOUBLE_FLOAT)) {
-                        double doubleFloatValue = columnValue.getDoubleFloatValue();
-                        BigDecimal totalDouble = intervalInfo.getTotalDouble();
-                        totalDouble = totalDouble.add(new BigDecimal(doubleFloatValue));
-                        intervalInfo.setTotalDouble(totalDouble);
-                        BigDecimal totalCountDouble = intervalInfo.getTotalCountDouble();
-                        totalCountDouble = totalCountDouble.add(BigDecimal.ONE);
-                        intervalInfo.setTotalCountDouble(totalCountDouble);
-                        double maxDouble = intervalInfo.getMaxDouble();
-                        if (doubleFloatValue > maxDouble) {
-                            maxDouble = doubleFloatValue;
-                            intervalInfo.setMaxDouble(maxDouble);
-                            intervalInfo.setHasMaxDouble(true);
+                    intervalInfo.setHasScanData(true);
+                    ColumnValue columnValue = columns.get(columnName);
+                    if (columnFilter.doCompare(columnValue)) {
+                        if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_INTEGER)) {
+                            int integerValue = columnValue.getIntegerValue();
+                            BigDecimal totalInt = intervalInfo.getTotalInt();
+                            totalInt = totalInt.add(new BigDecimal(integerValue));
+                            intervalInfo.setTotalInt(totalInt);
+                            BigDecimal totalCountInt = intervalInfo.getTotalCountInt();
+                            totalCountInt = totalCountInt.add(BigDecimal.ONE);
+                            intervalInfo.setTotalCountInt(totalCountInt);
+                            int maxInt = intervalInfo.getMaxInt();
+                            if (integerValue > maxInt) {
+                                maxInt = integerValue;
+                                intervalInfo.setMaxInt(maxInt);
+                                intervalInfo.setHasMaxInt(true);
+                            }
+                        }
+                        if (columnType.equals(ColumnValue.ColumnType.COLUMN_TYPE_DOUBLE_FLOAT)) {
+                            double doubleFloatValue = columnValue.getDoubleFloatValue();
+                            BigDecimal totalDouble = intervalInfo.getTotalDouble();
+                            totalDouble = totalDouble.add(new BigDecimal(doubleFloatValue));
+                            intervalInfo.setTotalDouble(totalDouble);
+                            BigDecimal totalCountDouble = intervalInfo.getTotalCountDouble();
+                            totalCountDouble = totalCountDouble.add(BigDecimal.ONE);
+                            intervalInfo.setTotalCountDouble(totalCountDouble);
+                            double maxDouble = intervalInfo.getMaxDouble();
+                            if (doubleFloatValue > maxDouble) {
+                                maxDouble = doubleFloatValue;
+                                intervalInfo.setMaxDouble(maxDouble);
+                                intervalInfo.setHasMaxDouble(true);
+                            }
                         }
                     }
                 }
             }
+            vinBuffer.clear();
         }
         ArrayList<Row> rowList = new ArrayList<>();
         if (!notEmpty) {
