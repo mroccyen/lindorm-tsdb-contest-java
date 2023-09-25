@@ -2,6 +2,7 @@ package com.alibaba.lindorm.contest.impl.utils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
@@ -12,16 +13,18 @@ public class ByteBufferUtils {
         if (fileSize == 0) {
             return new ArrayList<>();
         }
-        int bufferCount = (int) Math.ceil((double) fileSize / (double) Integer.MAX_VALUE);
+        int max = 1 << 30;
+        int bufferCount = (int) Math.ceil((double) fileSize / (double) max);
         List<ByteBuffer> list = new ArrayList<>(bufferCount);
 
         long preLength = 0;
-        long regionSize = Integer.MAX_VALUE;
+        long regionSize = max;
         for (int i = 0; i < bufferCount; i++) {
-            if (fileSize - preLength < Integer.MAX_VALUE) {
+            if (fileSize - preLength < max) {
                 regionSize = fileSize - preLength;
             }
-            list.add(fileChannel.map(FileChannel.MapMode.READ_ONLY, preLength, regionSize));
+            MappedByteBuffer mappedByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, preLength, regionSize);
+            list.add(mappedByteBuffer);
         }
         return list;
     }
