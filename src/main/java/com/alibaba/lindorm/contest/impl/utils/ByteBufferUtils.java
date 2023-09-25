@@ -25,6 +25,7 @@ public class ByteBufferUtils {
             }
             MappedByteBuffer mappedByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, preLength, regionSize);
             list.add(mappedByteBuffer);
+            preLength += regionSize;
         }
         return list;
     }
