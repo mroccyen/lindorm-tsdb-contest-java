@@ -2,13 +2,12 @@ package com.alibaba.lindorm.contest.impl.index;
 
 import com.alibaba.lindorm.contest.impl.file.FileManager;
 import com.alibaba.lindorm.contest.impl.store.ByteBuffersDataInput;
+import com.alibaba.lindorm.contest.impl.utils.ByteBufferUtils;
 import com.alibaba.lindorm.contest.structs.Vin;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -50,8 +49,7 @@ public class IndexLoader {
             if (fileChannel == null || fileChannel.size() == 0) {
                 continue;
             }
-            MappedByteBuffer dataByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
-            ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(dataByteBuffer));
+            ByteBuffersDataInput dataInput = new ByteBuffersDataInput(ByteBufferUtils.splitByteBuffer(fileChannel));
             while (dataInput.position() < dataInput.size()) {
                 byte[] vinByte = new byte[Vin.VIN_LENGTH];
                 for (int i = 0; i < Vin.VIN_LENGTH; i++) {

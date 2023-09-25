@@ -6,6 +6,7 @@ import com.alibaba.lindorm.contest.impl.index.Index;
 import com.alibaba.lindorm.contest.impl.index.IndexLoader;
 import com.alibaba.lindorm.contest.impl.schema.SchemaMeta;
 import com.alibaba.lindorm.contest.impl.store.ByteBuffersDataInput;
+import com.alibaba.lindorm.contest.impl.utils.ByteBufferUtils;
 import com.alibaba.lindorm.contest.structs.Aggregator;
 import com.alibaba.lindorm.contest.structs.ColumnValue;
 import com.alibaba.lindorm.contest.structs.CompareExpression;
@@ -19,9 +20,7 @@ import com.alibaba.lindorm.contest.structs.Vin;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -158,8 +157,7 @@ public class DataQueryHandler {
             if (fileChannel == null || fileChannel.size() == 0) {
                 continue;
             }
-            MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
-            ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
+            ByteBuffersDataInput dataInput = new ByteBuffersDataInput(ByteBufferUtils.splitByteBuffer(fileChannel));
             while (dataInput.position() < dataInput.size()) {
                 dataInput.readBytes(vinBuffer, Vin.VIN_LENGTH);
                 long t = dataInput.readVLong();
@@ -213,8 +211,7 @@ public class DataQueryHandler {
         boolean hasMaxDouble = false;
         BigDecimal totalDouble = BigDecimal.ZERO;
         BigDecimal totalCountDouble = BigDecimal.ZERO;
-        MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
-        ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
+        ByteBuffersDataInput dataInput = new ByteBuffersDataInput(ByteBufferUtils.splitByteBuffer(fileChannel));
         ByteBuffer vinBuffer = ByteBuffer.allocate(Vin.VIN_LENGTH);
         while (dataInput.position() < dataInput.size()) {
             dataInput.readBytes(vinBuffer, Vin.VIN_LENGTH);
@@ -337,8 +334,7 @@ public class DataQueryHandler {
         SchemaMeta schemaMeta = fileManager.getSchemaMeta(tableName);
         Aggregator aggregator = trReadReq.getAggregator();
         ColumnValue.ColumnType columnType = getColumnType(schemaMeta, columnName);
-        MappedByteBuffer sizeByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
-        ByteBuffersDataInput dataInput = new ByteBuffersDataInput(Collections.singletonList(sizeByteBuffer));
+        ByteBuffersDataInput dataInput = new ByteBuffersDataInput(ByteBufferUtils.splitByteBuffer(fileChannel));
         boolean notEmpty = false;
         ByteBuffer vinBuffer = ByteBuffer.allocate(Vin.VIN_LENGTH);
         while (dataInput.position() < dataInput.size()) {
