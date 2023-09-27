@@ -16,7 +16,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
@@ -59,10 +58,7 @@ public class FlushRequestTask extends Thread {
 
     private void doWrite(List<WriteRequestWrapper> writeRequestWrapperList) throws IOException {
         //保存KV数据
-        Iterator<WriteRequestWrapper> iterator = writeRequestWrapperList.iterator();
-        while (iterator.hasNext()) {
-            WriteRequestWrapper writeRequestWrapper = iterator.next();
-
+        for (WriteRequestWrapper writeRequestWrapper : writeRequestWrapperList) {
             WriteRequest writeRequest = writeRequestWrapper.getWriteRequest();
             String tableName = writeRequest.getTableName();
             Collection<Row> rows = writeRequest.getRows();
@@ -132,11 +128,7 @@ public class FlushRequestTask extends Thread {
 
                 byteBuffersDataOutput.reset();
             }
-        }
 
-        iterator = writeRequestWrapperList.iterator();
-        while (iterator.hasNext()) {
-            WriteRequestWrapper writeRequestWrapper = iterator.next();
             //释放锁让写线程返回
             writeRequestWrapper.getLock().lock();
             writeRequestWrapper.getCondition().signal();
